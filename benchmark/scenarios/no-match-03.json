@@ -1,0 +1,61 @@
+{
+  "id": "no-match-03",
+  "kind": "no-match",
+  "owner": "p-res-1",
+  "source": {
+    "from": "written for this benchmark (unclear instruction)",
+    "use": "inspired"
+  },
+  "request": "Envoie-lui les résultats.",
+  "mailbox": {
+    "mails": [
+      {
+        "id": "m1",
+        "threadId": "t1",
+        "from": "julien.roche@mail.example",
+        "to": [
+          "karim.benali@univ-valmont.example"
+        ],
+        "cc": [],
+        "date": "2026-11-11T18:20:00Z",
+        "subject": "Rando dimanche",
+        "body": "Salut Karim ! Rando dimanche 15 novembre, départ 9h au parking du lac ?\nJulien",
+        "attachments": []
+      },
+      {
+        "id": "m2",
+        "threadId": "t2",
+        "from": "sofia.lindqvist@univ-valmont.example",
+        "to": [
+          "karim.benali@univ-valmont.example"
+        ],
+        "cc": [],
+        "date": "2026-11-10T08:00:00Z",
+        "subject": "Seminar schedule",
+        "body": "Hi Karim, the reading seminar schedule for November is in our shared folder. Best, Sofia",
+        "attachments": []
+      }
+    ]
+  },
+  "expect": {
+    "route": [
+      "COMPOSE"
+    ],
+    "clear": false,
+    "tools": {
+      "mustRead": [],
+      "draft": null,
+      "forbidden": []
+    },
+    "facts": {
+      "mustContain": []
+    },
+    "output": {
+      "language": "fr",
+      "mustContain": [
+        "qui|destinataire",
+        "résultats"
+      ]
+    }
+  }
+}

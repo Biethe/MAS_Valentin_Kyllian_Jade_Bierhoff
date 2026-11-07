@@ -1,0 +1,115 @@
+{
+  "id": "summarize-02",
+  "kind": "summarize",
+  "owner": "p-student-2",
+  "source": {
+    "from": "EmailSum (Zhang et al., 2021): thread shape (3–10 mails) and short summaries keeping key facts; structure only",
+    "use": "inspired"
+  },
+  "request": "Summarize the emails about my Erasmus application.",
+  "mailbox": {
+    "mails": [
+      {
+        "id": "m1",
+        "threadId": "t1",
+        "from": "international@univ-valmont.example",
+        "to": [
+          "tom.okafor@etu.univ-valmont.example"
+        ],
+        "cc": [],
+        "date": "2026-11-02T10:00:00Z",
+        "subject": "Erasmus application received",
+        "body": "Dear Tom,\n\nWe have received your Erasmus application for the spring semester at Nordhaven University. We will contact you if anything is missing.\n\nKind regards,\nInternational Office",
+        "attachments": []
+      },
+      {
+        "id": "m2",
+        "threadId": "t2",
+        "from": "international@univ-valmont.example",
+        "to": [
+          "tom.okafor@etu.univ-valmont.example"
+        ],
+        "cc": [],
+        "date": "2026-11-16T09:05:00Z",
+        "subject": "Erasmus learning agreement – missing signature page",
+        "body": "Dear Tom,\n\nYour learning agreement is missing the signed signature page. Please send it by Friday 20 November at the latest, otherwise your nomination cannot go ahead.\n\nKind regards,\nInternational Office",
+        "attachments": []
+      },
+      {
+        "id": "m3",
+        "threadId": "t3",
+        "from": "international@univ-valmont.example",
+        "to": [
+          "tom.okafor@etu.univ-valmont.example"
+        ],
+        "cc": [],
+        "date": "2026-11-18T15:30:00Z",
+        "subject": "Nomination and housing",
+        "body": "Dear Tom,\n\nGood news: Nordhaven University has accepted your nomination, pending the signature page. Their student housing applications open on Tuesday 1 December.\n\nKind regards,\nInternational Office",
+        "attachments": []
+      },
+      {
+        "id": "m4",
+        "threadId": "t4",
+        "from": "international@univ-valmont.example",
+        "to": [
+          "tom.okafor@etu.univ-valmont.example"
+        ],
+        "cc": [],
+        "date": "2026-11-05T10:00:00Z",
+        "subject": "International Week",
+        "body": "Dear students,\n\nInternational Week starts on 23 November, with a food fair and a photo contest.\n\nInternational Office",
+        "attachments": []
+      },
+      {
+        "id": "m5",
+        "threadId": "t5",
+        "from": "maya.patel@mail.example",
+        "to": [
+          "tom.okafor@etu.univ-valmont.example"
+        ],
+        "cc": [],
+        "date": "2026-11-16T17:40:00Z",
+        "subject": "pizza tonight?",
+        "body": "Hey Tom, pizza at 8 tonight? Maya",
+        "attachments": []
+      }
+    ]
+  },
+  "expect": {
+    "route": [
+      "SUMMARIZE"
+    ],
+    "clear": true,
+    "tools": {
+      "mustRead": [
+        "m1",
+        "m2",
+        "m3"
+      ],
+      "draft": null,
+      "forbidden": []
+    },
+    "facts": {
+      "mustContain": [
+        "Nordhaven",
+        "20 November",
+        "1 December"
+      ]
+    },
+    "output": {
+      "language": "en",
+      "maxWordRatio": 0.5,
+      "mustContain": [
+        "Nordhaven",
+        "20 November",
+        "signature",
+        "1 December|housing"
+      ],
+      "mustNotContain": [
+        "pizza",
+        "International Week|food fair"
+      ]
+    }
+  }
+}

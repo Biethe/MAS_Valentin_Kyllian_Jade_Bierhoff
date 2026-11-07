@@ -1,0 +1,23 @@
+{
+  "_note": "Default tone per recipient role. The judge grades tone against the recipient's profile in the draft's language.",
+  "professor": {
+    "fr": "Formel et respectueux. Vouvoiement. Salutation « Bonjour Madame/Monsieur <Nom> » ou « Madame, Monsieur ». Formule de politesse (« Bien cordialement »). Phrases complètes, pas de familiarités ni d'émojis.",
+    "en": "Formal and respectful. Address as 'Dear Professor <Name>'. Polite closing ('Kind regards', 'Best regards'). Complete sentences, no slang or emojis."
+  },
+  "researcher": {
+    "fr": "Professionnel et collégial. Vouvoiement. « Bonjour <Titre> <Nom> ». Courtois et précis, sans excès de formalisme.",
+    "en": "Professional and collegial. 'Dear Dr. <Name>' or 'Dear <First name>' if already on first-name terms. Courteous and precise, not stiff."
+  },
+  "student": {
+    "fr": "Bienveillant et clair, registre professionnel. Vouvoiement ou tutoiement selon l'habitude, sans familiarité excessive. Informations pratiques mises en avant.",
+    "en": "Kind and clear, professional register. 'Dear <First name>' or 'Hello <First name>'. Practical information first, no slang."
+  },
+  "administration": {
+    "fr": "Formel, concis et factuel. « Madame, Monsieur » ou « Bonjour ». Objet précis, références (dates, numéros de dossier) explicites. Formule « Cordialement ».",
+    "en": "Formal, concise and factual. 'Dear Sir or Madam' or 'Dear <Office>'. Precise subject, explicit references (dates, file numbers). 'Kind regards'."
+  },
+  "friend": {
+    "fr": "Informel et chaleureux. Tutoiement obligatoire. « Salut <Prénom> » ou « Coucou ». Ton détendu, phrases courtes, émojis acceptés.",
+    "en": "Informal and warm. 'Hi <First name>' or 'Hey'. Relaxed, short sentences, contractions and emojis are fine."
+  }
+}

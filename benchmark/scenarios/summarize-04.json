@@ -1,0 +1,102 @@
+{
+  "id": "summarize-04",
+  "kind": "summarize",
+  "owner": "p-prof-2",
+  "source": {
+    "from": "EmailSum (Zhang et al., 2021): thread shape (3–10 mails) and short summaries keeping key facts; structure only",
+    "use": "inspired"
+  },
+  "request": "Summarize my thread with Sofia about the committee.",
+  "mailbox": {
+    "mails": [
+      {
+        "id": "m1",
+        "threadId": "t1",
+        "from": "sofia.lindqvist@univ-valmont.example",
+        "to": [
+          "daniel.whitmore@univ-valmont.example"
+        ],
+        "cc": [],
+        "date": "2026-11-10T10:00:00Z",
+        "subject": "Committee meeting",
+        "body": "Daniel,\n\nThe thesis committee meeting is moved to Thursday 3 December, 10:00, room A010. Could you send your reports on the two candidates by Tuesday 1 December?\n\nSofia",
+        "attachments": []
+      },
+      {
+        "id": "m2",
+        "threadId": "t1",
+        "from": "daniel.whitmore@univ-valmont.example",
+        "to": [
+          "sofia.lindqvist@univ-valmont.example"
+        ],
+        "cc": [],
+        "date": "2026-11-10T11:40:00Z",
+        "subject": "Re: Committee meeting",
+        "body": "Sofia,\n\nNoted. By the way, how was the conference in Lisbon? I heard the keynote was great.\n\nDaniel",
+        "attachments": []
+      },
+      {
+        "id": "m3",
+        "threadId": "t1",
+        "from": "sofia.lindqvist@univ-valmont.example",
+        "to": [
+          "daniel.whitmore@univ-valmont.example"
+        ],
+        "cc": [],
+        "date": "2026-11-11T09:10:00Z",
+        "subject": "Re: Committee meeting",
+        "body": "Daniel,\n\nLisbon was lovely, thanks! One more thing: the dean will attend the committee, so please bring printed copies of the reports.\n\nSofia",
+        "attachments": []
+      },
+      {
+        "id": "m4",
+        "threadId": "t4",
+        "from": "tom.okafor@etu.univ-valmont.example",
+        "to": [
+          "daniel.whitmore@univ-valmont.example"
+        ],
+        "cc": [],
+        "date": "2026-11-11T16:00:00Z",
+        "subject": "Draft chapter 3",
+        "body": "Dear Professor Whitmore,\n\nPlease find my chapter 3 draft in the shared folder.\n\nBest regards,\nTom",
+        "attachments": []
+      }
+    ]
+  },
+  "expect": {
+    "route": [
+      "SUMMARIZE"
+    ],
+    "clear": true,
+    "tools": {
+      "mustRead": [
+        "m1",
+        "m2",
+        "m3"
+      ],
+      "draft": null,
+      "forbidden": []
+    },
+    "facts": {
+      "mustContain": [
+        "3 December",
+        "1 December",
+        "A010"
+      ]
+    },
+    "output": {
+      "language": "en",
+      "maxWordRatio": 0.5,
+      "mustContain": [
+        "3 December",
+        "1 December",
+        "report",
+        "printed|dean"
+      ],
+      "mustNotContain": [
+        "Lisbon|keynote",
+        "chapter 3"
+      ]
+    }
+  }
+}

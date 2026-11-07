@@ -1,0 +1,77 @@
+{
+  "id": "no-match-04",
+  "kind": "no-match",
+  "owner": "p-prof-2",
+  "source": {
+    "from": "WorkBench email template \"Reply to {name}'s last email about '{subject}'\" (ambiguous: two matching mails)",
+    "use": "inspired"
+  },
+  "request": "Reply yes to the student's deadline extension request.",
+  "mailbox": {
+    "mails": [
+      {
+        "id": "m1",
+        "threadId": "t1",
+        "from": "tom.okafor@etu.univ-valmont.example",
+        "to": [
+          "daniel.whitmore@univ-valmont.example"
+        ],
+        "cc": [],
+        "date": "2026-11-12T10:00:00Z",
+        "subject": "Deadline extension request",
+        "body": "Dear Professor Whitmore,\n\nCould I have a one-week extension for the chapter 3 deadline?\n\nBest regards,\nTom Okafor",
+        "attachments": []
+      },
+      {
+        "id": "m2",
+        "threadId": "t2",
+        "from": "lea.martin@etu.univ-valmont.example",
+        "to": [
+          "daniel.whitmore@univ-valmont.example"
+        ],
+        "cc": [],
+        "date": "2026-11-12T11:30:00Z",
+        "subject": "Extension request – literature review",
+        "body": "Dear Professor Whitmore,\n\nWould it be possible to extend the literature review deadline by one week?\n\nKind regards,\nLéa Martin",
+        "attachments": []
+      },
+      {
+        "id": "m3",
+        "threadId": "t3",
+        "from": "sofia.lindqvist@univ-valmont.example",
+        "to": [
+          "daniel.whitmore@univ-valmont.example"
+        ],
+        "cc": [],
+        "date": "2026-11-10T10:00:00Z",
+        "subject": "Committee meeting",
+        "body": "Daniel, the committee meeting moved to Thursday 3 December. Sofia",
+        "attachments": []
+      }
+    ]
+  },
+  "expect": {
+    "route": [
+      "REPLY"
+    ],
+    "clear": true,
+    "tools": {
+      "mustRead": [],
+      "mustCall": [
+        "search_mail"
+      ],
+      "draft": null,
+      "forbidden": []
+    },
+    "facts": {
+      "mustContain": []
+    },
+    "output": {
+      "language": "en",
+      "mustContain": [
+        "Tom|Okafor",
+        "L[ée]a|Martin"
+      ]
+    }
+  }
+}

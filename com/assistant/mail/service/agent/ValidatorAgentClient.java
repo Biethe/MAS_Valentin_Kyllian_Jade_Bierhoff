@@ -1,9 +1,9 @@
 package com.assistant.mail.service;
 
-import com.assistant.mail.model.Draft;
-import com.assistant.mail.model.Summary;
-import com.assistant.mail.model.Instruction;
-import com.assistant.mail.model.Information;
+import com.assistant.mail.model.output.Draft;
+import com.assistant.mail.model.output.Summary;
+import com.assistant.mail.model.plan.Instruction;
+import com.assistant.mail.model.fact.Information;
 import com.assistant.mail.prompt.ValidatorSystemPrompt;
 
 public interface ValidatorAgentClient {

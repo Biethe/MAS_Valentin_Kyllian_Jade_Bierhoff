@@ -1,0 +1,11 @@
+# Personal learning context (kept out of commits by default)
+/devpost/learner-profile.md
+
+# Local credentials
+.env
+.env.*
+!.env.example
+
+# Build output and benchmark runs (regenerated locally)
+/benchmark/target/
+/benchmark/runs/

@@ -1,0 +1,117 @@
+{
+  "id": "summarize-01",
+  "kind": "summarize",
+  "owner": "p-res-1",
+  "source": {
+    "from": "EmailSum (Zhang et al., 2021): thread shape (3–10 mails) and short summaries keeping key facts; structure only",
+    "use": "inspired"
+  },
+  "request": "Résume-moi le fil sur la journée d'étude du 4 décembre.",
+  "mailbox": {
+    "mails": [
+      {
+        "id": "m1",
+        "threadId": "t1",
+        "from": "helene.dubois@univ-valmont.example",
+        "to": [
+          "karim.benali@univ-valmont.example"
+        ],
+        "cc": [],
+        "date": "2026-11-10T09:00:00Z",
+        "subject": "Journée d'étude du 4 décembre",
+        "body": "Bonjour Karim,\n\nNous organisons la journée d'étude du vendredi 4 décembre. Pourriez-vous coordonner le programme ? Les résumés des intervenants sont attendus pour le mercredi 25 novembre.\n\nBien cordialement,\nHélène Dubois",
+        "attachments": []
+      },
+      {
+        "id": "m2",
+        "threadId": "t1",
+        "from": "karim.benali@univ-valmont.example",
+        "to": [
+          "helene.dubois@univ-valmont.example"
+        ],
+        "cc": [],
+        "date": "2026-11-10T14:20:00Z",
+        "subject": "Re: Journée d'étude du 4 décembre",
+        "body": "Bonjour Hélène,\n\nAvec plaisir. Merci encore pour les croissants de ce matin, ils étaient excellents !\n\nKarim",
+        "attachments": []
+      },
+      {
+        "id": "m3",
+        "threadId": "t1",
+        "from": "scolarite@univ-valmont.example",
+        "to": [
+          "karim.benali@univ-valmont.example"
+        ],
+        "cc": [],
+        "date": "2026-11-12T10:00:00Z",
+        "subject": "Re: Journée d'étude du 4 décembre",
+        "body": "Bonjour,\n\nLa salle B204 étant trop petite, la journée d'étude aura lieu dans l'amphithéâtre C. Le service de scolarité prend en charge le buffet du midi.\n\nLe service de scolarité",
+        "attachments": []
+      },
+      {
+        "id": "m4",
+        "threadId": "t1",
+        "from": "helene.dubois@univ-valmont.example",
+        "to": [
+          "karim.benali@univ-valmont.example"
+        ],
+        "cc": [],
+        "date": "2026-11-16T08:15:00Z",
+        "subject": "Re: Journée d'étude du 4 décembre",
+        "body": "Bonjour Karim,\n\nUrgent : le service communication a besoin du programme définitif au plus tard ce vendredi 20 novembre pour l'impression des affiches.\n\nBien cordialement,\nHélène Dubois",
+        "attachments": []
+      },
+      {
+        "id": "m5",
+        "threadId": "t5",
+        "from": "scolarite@univ-valmont.example",
+        "to": [
+          "karim.benali@univ-valmont.example"
+        ],
+        "cc": [],
+        "date": "2026-11-08T14:00:00Z",
+        "subject": "Fermeture de la bibliothèque",
+        "body": "Bonjour,\n\nLa bibliothèque universitaire sera fermée le samedi 14 novembre pour inventaire.\n\nLe service de scolarité",
+        "attachments": []
+      }
+    ]
+  },
+  "expect": {
+    "route": [
+      "SUMMARIZE"
+    ],
+    "clear": true,
+    "tools": {
+      "mustRead": [
+        "m1",
+        "m2",
+        "m3",
+        "m4"
+      ],
+      "draft": null,
+      "forbidden": []
+    },
+    "facts": {
+      "mustContain": [
+        "4 décembre",
+        "20 novembre",
+        "amphithéâtre C|amphi C",
+        "25 novembre"
+      ]
+    },
+    "output": {
+      "language": "fr",
+      "maxWordRatio": 0.5,
+      "mustContain": [
+        "4 décembre",
+        "20 novembre",
+        "amphi",
+        "25 novembre"
+      ],
+      "mustNotContain": [
+        "croissant",
+        "bibliothèque"
+      ]
+    }
+  }
+}

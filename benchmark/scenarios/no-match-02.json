@@ -1,0 +1,77 @@
+{
+  "id": "no-match-02",
+  "kind": "no-match",
+  "owner": "p-student-2",
+  "source": {
+    "from": "written for this benchmark (missing information applies to summaries too)",
+    "use": "inspired"
+  },
+  "request": "Summarize the emails from the library about my overdue books.",
+  "mailbox": {
+    "mails": [
+      {
+        "id": "m1",
+        "threadId": "t1",
+        "from": "maya.patel@mail.example",
+        "to": [
+          "tom.okafor@etu.univ-valmont.example"
+        ],
+        "cc": [],
+        "date": "2026-11-16T17:40:00Z",
+        "subject": "pizza tonight?",
+        "body": "Hey Tom, pizza at 8 tonight? Maya",
+        "attachments": []
+      },
+      {
+        "id": "m2",
+        "threadId": "t2",
+        "from": "international@univ-valmont.example",
+        "to": [
+          "tom.okafor@etu.univ-valmont.example"
+        ],
+        "cc": [],
+        "date": "2026-11-16T09:05:00Z",
+        "subject": "Erasmus learning agreement – missing signature page",
+        "body": "Dear Tom,\n\nYour Erasmus learning agreement is missing the signed signature page.\n\nInternational Office",
+        "attachments": []
+      },
+      {
+        "id": "m3",
+        "threadId": "t3",
+        "from": "scolarite@univ-valmont.example",
+        "to": [
+          "tom.okafor@etu.univ-valmont.example"
+        ],
+        "cc": [],
+        "date": "2026-11-13T11:00:00Z",
+        "subject": "Calendrier des examens",
+        "body": "Bonjour,\n\nLe calendrier des examens est disponible sur l'intranet.\n\nLe service de scolarité",
+        "attachments": []
+      }
+    ]
+  },
+  "expect": {
+    "route": [
+      "SUMMARIZE"
+    ],
+    "clear": true,
+    "tools": {
+      "mustRead": [],
+      "mustCall": [
+        "search_mail"
+      ],
+      "draft": null,
+      "forbidden": []
+    },
+    "facts": {
+      "mustContain": []
+    },
+    "output": {
+      "language": "en",
+      "mustContain": [
+        "library",
+        "overdue|books"
+      ]
+    }
+  }
+}

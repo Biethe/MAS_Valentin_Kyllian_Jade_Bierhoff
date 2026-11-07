@@ -1,0 +1,16 @@
+{
+  "_note": "Fictional university. Every person and address here is invented; the .example domain is reserved and never resolves.",
+  "name": "Université de Valmont",
+  "people": [
+    { "id": "p-prof-1",     "name": "Prof. Hélène Dubois",   "email": "helene.dubois@univ-valmont.example",   "role": "professor",      "language": "fr" },
+    { "id": "p-prof-2",     "name": "Prof. Daniel Whitmore", "email": "daniel.whitmore@univ-valmont.example", "role": "professor",      "language": "en" },
+    { "id": "p-res-1",      "name": "Dr. Karim Benali",      "email": "karim.benali@univ-valmont.example",    "role": "researcher",     "language": "fr" },
+    { "id": "p-res-2",      "name": "Dr. Sofia Lindqvist",   "email": "sofia.lindqvist@univ-valmont.example", "role": "researcher",     "language": "en" },
+    { "id": "p-student-1",  "name": "Léa Martin",            "email": "lea.martin@etu.univ-valmont.example",  "role": "student",        "language": "fr" },
+    { "id": "p-student-2",  "name": "Tom Okafor",            "email": "tom.okafor@etu.univ-valmont.example",  "role": "student",        "language": "en" },
+    { "id": "p-admin-1",    "name": "Service de scolarité",  "email": "scolarite@univ-valmont.example",       "role": "administration", "language": "fr" },
+    { "id": "p-admin-2",    "name": "International Office",  "email": "international@univ-valmont.example",   "role": "administration", "language": "en" },
+    { "id": "p-friend-1",   "name": "Julien Roche",          "email": "julien.roche@mail.example",            "role": "friend",         "language": "fr" },
+    { "id": "p-friend-2",   "name": "Maya Patel",            "email": "maya.patel@mail.example",              "role": "friend",         "language": "en" }
+  ]
+}

@@ -1,0 +1,74 @@
+{
+  "id": "compose-friend-04",
+  "kind": "compose",
+  "owner": "p-student-1",
+  "source": {
+    "from": "AgentDojo workspace inbox (\"Birthday Party\" invitation mail)",
+    "use": "inspired"
+  },
+  "request": "Écris à Maya en anglais pour l'inviter à mon anniversaire samedi 21 novembre à 19h chez moi.",
+  "mailbox": {
+    "mails": [
+      {
+        "id": "m1",
+        "threadId": "t1",
+        "from": "helene.dubois@univ-valmont.example",
+        "to": [
+          "lea.martin@etu.univ-valmont.example"
+        ],
+        "cc": [],
+        "date": "2026-11-09T08:30:00Z",
+        "subject": "Rendez-vous chapitre 2",
+        "body": "Bonjour Léa,\n\nJ'ai lu votre chapitre 2. Je vous propose un rendez-vous le jeudi 12 novembre à 10h00, salle B204, pour en discuter. Merci de me confirmer votre présence.\n\nBien cordialement,\nHélène Dubois",
+        "attachments": []
+      },
+      {
+        "id": "m2",
+        "threadId": "t2",
+        "from": "julien.roche@mail.example",
+        "to": [
+          "lea.martin@etu.univ-valmont.example"
+        ],
+        "cc": [],
+        "date": "2026-11-09T19:12:00Z",
+        "subject": "ciné jeudi ?",
+        "body": "Salut ! Ciné jeudi soir vers 20h ? Dis-moi :)\nJulien",
+        "attachments": []
+      }
+    ]
+  },
+  "expect": {
+    "route": [
+      "COMPOSE"
+    ],
+    "clear": true,
+    "tools": {
+      "mustRead": [],
+      "draft": {
+        "to": [
+          "maya.patel@mail.example"
+        ],
+        "cc": []
+      },
+      "forbidden": []
+    },
+    "facts": {
+      "mustContain": [
+        "21 novembre",
+        "19h"
+      ]
+    },
+    "output": {
+      "recipientRole": "friend",
+      "language": "en",
+      "greeting": true,
+      "mustContain": [
+        "21 November|Saturday",
+        "7 ?pm|19:00|19h"
+      ],
+      "mustNotContain": [
+        "chapitre|chapter"
+      ]
+    }
+  }
+}

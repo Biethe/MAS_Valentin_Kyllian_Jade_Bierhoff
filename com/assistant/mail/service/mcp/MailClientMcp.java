@@ -1,8 +1,8 @@
 package com.assistant.mail.service;
 
-import com.assistant.mail.model.AttachmentFile;
-import com.assistant.mail.model.Email;
-import com.assistant.mail.model.EmailThread;
+import com.assistant.mail.model.mail.AttachmentFile;
+import com.assistant.mail.model.mail.Email;
+import com.assistant.mail.model.mail.EmailThread;
 import java.util.List;
 
 public interface MailClientMcp {

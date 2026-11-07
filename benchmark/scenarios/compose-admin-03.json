@@ -1,0 +1,74 @@
+{
+  "id": "compose-admin-03",
+  "kind": "compose",
+  "owner": "p-student-2",
+  "source": {
+    "from": "WorkBench email template \"Send an email to {name} saying '{body}' and title it '{subject}'\"",
+    "use": "adapted"
+  },
+  "request": "Write to the scolarité office to ask for a certificate of enrolment for my visa appointment on Thursday 3 December.",
+  "mailbox": {
+    "mails": [
+      {
+        "id": "m1",
+        "threadId": "t1",
+        "from": "maya.patel@mail.example",
+        "to": [
+          "tom.okafor@etu.univ-valmont.example"
+        ],
+        "cc": [],
+        "date": "2026-11-16T17:40:00Z",
+        "subject": "pizza tonight?",
+        "body": "Hey Tom, pizza at 8 tonight? Maya",
+        "attachments": []
+      },
+      {
+        "id": "m2",
+        "threadId": "t2",
+        "from": "international@univ-valmont.example",
+        "to": [
+          "tom.okafor@etu.univ-valmont.example"
+        ],
+        "cc": [],
+        "date": "2026-11-05T10:00:00Z",
+        "subject": "International Week",
+        "body": "Dear students,\n\nInternational Week starts on 23 November.\n\nInternational Office",
+        "attachments": []
+      }
+    ]
+  },
+  "expect": {
+    "route": [
+      "COMPOSE"
+    ],
+    "clear": true,
+    "tools": {
+      "mustRead": [],
+      "draft": {
+        "to": [
+          "scolarite@univ-valmont.example"
+        ],
+        "cc": []
+      },
+      "forbidden": []
+    },
+    "facts": {
+      "mustContain": [
+        "certificat|certificate",
+        "3 d[ée]cembre|3 December"
+      ]
+    },
+    "output": {
+      "recipientRole": "administration",
+      "language": "en",
+      "greeting": true,
+      "mustContain": [
+        "certificate",
+        "3 December|Thursday"
+      ],
+      "mustNotContain": [
+        "pizza"
+      ]
+    }
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "id": "reply-prof-01",
+  "kind": "reply",
+  "owner": "p-student-1",
+  "source": { "from": "WorkBench email template \"Reply to {name}'s last email about '{subject}'\"", "use": "adapted" },
+  "request": "Réponds à la Prof. Dubois pour confirmer le rendez-vous qu'elle me propose.",
+  "mailbox": {
+    "mails": [
+      {
+        "id": "m1", "threadId": "t1",
+        "from": "helene.dubois@univ-valmont.example",
+        "to": ["lea.martin@etu.univ-valmont.example"], "cc": [],
+        "date": "2026-11-09T08:30:00Z",
+        "subject": "Rendez-vous chapitre 2",
+        "body": "Bonjour Léa,\n\nJ'ai lu votre chapitre 2. Je vous propose un rendez-vous le jeudi 12 novembre à 10h00, salle B204, pour en discuter. Merci de me confirmer votre présence.\n\nBien cordialement,\nHélène Dubois",
+        "attachments": []
+      },
+      {
+        "id": "m2", "threadId": "t2",
+        "from": "scolarite@univ-valmont.example",
+        "to": ["lea.martin@etu.univ-valmont.example"], "cc": [],
+        "date": "2026-11-08T14:00:00Z",
+        "subject": "Fermeture de la bibliothèque",
+        "body": "Bonjour,\n\nLa bibliothèque universitaire sera fermée le samedi 14 novembre pour inventaire.\n\nLe service de scolarité",
+        "attachments": []
+      },
+      {
+        "id": "m3", "threadId": "t3",
+        "from": "julien.roche@mail.example",
+        "to": ["lea.martin@etu.univ-valmont.example"], "cc": [],
+        "date": "2026-11-09T19:12:00Z",
+        "subject": "ciné jeudi ?",
+        "body": "Salut Léa ! Ciné jeudi soir vers 20h ? Dis-moi :)\nJulien",
+        "attachments": []
+      }
+    ]
+  },
+  "expect": {
+    "route": ["REPLY"], "clear": true,
+    "tools": {
+      "mustRead": ["m1"],
+      "draft": { "to": ["helene.dubois@univ-valmont.example"], "cc": [] },
+      "forbidden": []
+    },
+    "facts": { "mustContain": ["12 novembre", "10h00|10:00|10 h", "B204"] },
+    "output": {
+      "recipientRole": "professor", "language": "fr", "greeting": true,
+      "mustContain": ["12 novembre|jeudi", "B204|10h00|10:00|10 h"],
+      "mustNotContain": ["ciné", "bibliothèque"]
+    }
+  }
+}

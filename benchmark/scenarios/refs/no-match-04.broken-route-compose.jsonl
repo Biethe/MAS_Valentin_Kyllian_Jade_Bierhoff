@@ -1,0 +1,6 @@
+{"layer": "route", "actor": "planner", "kind": "llm", "name": "atomic_instructions", "input": {"request": "Reply yes to the student's deadline extension request."}, "output": {"instructions": [{"type": "COMPOSE", "clear": true, "body": "Reply yes to the student's deadline extension request."}]}}
+{"layer": "tool", "actor": "workflow", "kind": "tool", "name": "search_mail", "input": {"query": "extension"}}
+{"layer": "tool", "actor": "workflow", "kind": "tool", "name": "read_mail", "input": {"id": "m1"}}
+{"layer": "tool", "actor": "workflow", "kind": "tool", "name": "read_mail", "input": {"id": "m2"}}
+{"layer": "facts", "actor": "planner", "kind": "llm", "name": "atomic_information", "input": {"mailIds": ["m1", "m2"]}, "output": {"items": [{"kind": "REQUIRED_ACTION", "text": "Tom Okafor asks for a one-week extension for chapter 3.", "sourceMailId": "m1"}, {"kind": "REQUIRED_ACTION", "text": "Léa Martin asks for a one-week extension for the literature review.", "sourceMailId": "m2"}]}}
+{"layer": "output", "actor": "planner", "kind": "llm", "name": "ask_user", "input": {}, "output": {"question": "Two students asked for a deadline extension: Tom Okafor (chapter 3) and Léa Martin (literature review). Which one should I reply yes to, or both?"}}

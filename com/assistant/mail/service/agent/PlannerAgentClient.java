@@ -2,7 +2,10 @@ package com.assistant.mail.service;
 
 import java.util.List;
 
-import com.assistant.mail.model.Instruction;
+import com.assistant.mail.model.fact.Information;
+import com.assistant.mail.model.mail.AttachmentFile;
+import com.assistant.mail.model.mail.Email;
+import com.assistant.mail.model.plan.Instruction;
 import com.assistant.mail.prompt.PlannerSystemPrompt;
 
 public interface PlannerAgentClient {

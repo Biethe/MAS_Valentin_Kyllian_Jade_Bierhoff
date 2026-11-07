@@ -1,0 +1,3 @@
+{"layer": "route", "actor": "planner", "kind": "llm", "name": "atomic_instructions", "input": {"request": "Envoie-lui les résultats."}, "output": {"instructions": [{"type": "COMPOSE", "clear": false, "body": "Envoie-lui les résultats."}]}}
+{"layer": "facts", "actor": "planner", "kind": "llm", "name": "atomic_information", "input": {"mailIds": []}, "output": {"items": []}}
+{"layer": "output", "actor": "planner", "kind": "llm", "name": "ask_user", "input": {}, "output": {"question": "De quels résultats s'agit-il ?"}}

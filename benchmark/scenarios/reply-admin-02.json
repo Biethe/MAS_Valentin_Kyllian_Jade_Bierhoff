@@ -1,0 +1,89 @@
+{
+  "id": "reply-admin-02",
+  "kind": "reply",
+  "owner": "p-student-2",
+  "source": {
+    "from": "WorkBench email template \"Reply to {name}'s last email about '{subject}'\"",
+    "use": "adapted"
+  },
+  "request": "Reply to the International Office that I'll send the signed signature page by Wednesday 18 November.",
+  "mailbox": {
+    "mails": [
+      {
+        "id": "m1",
+        "threadId": "t1",
+        "from": "international@univ-valmont.example",
+        "to": [
+          "tom.okafor@etu.univ-valmont.example"
+        ],
+        "cc": [],
+        "date": "2026-11-16T09:05:00Z",
+        "subject": "Erasmus learning agreement – missing signature page",
+        "body": "Dear Tom,\n\nYour Erasmus learning agreement for the spring semester is missing the signed signature page. Please send it to us by Friday 20 November, otherwise your application cannot be forwarded to the partner university.\n\nKind regards,\nInternational Office",
+        "attachments": []
+      },
+      {
+        "id": "m2",
+        "threadId": "t2",
+        "from": "maya.patel@mail.example",
+        "to": [
+          "tom.okafor@etu.univ-valmont.example"
+        ],
+        "cc": [],
+        "date": "2026-11-16T17:40:00Z",
+        "subject": "pizza tonight?",
+        "body": "Hey Tom, pizza at 8 tonight? Maya",
+        "attachments": []
+      },
+      {
+        "id": "m3",
+        "threadId": "t3",
+        "from": "scolarite@univ-valmont.example",
+        "to": [
+          "tom.okafor@etu.univ-valmont.example"
+        ],
+        "cc": [],
+        "date": "2026-11-13T11:00:00Z",
+        "subject": "Calendrier des examens",
+        "body": "Bonjour,\n\nLe calendrier des examens du semestre est disponible sur l'intranet.\n\nLe service de scolarité",
+        "attachments": []
+      }
+    ]
+  },
+  "expect": {
+    "route": [
+      "REPLY"
+    ],
+    "clear": true,
+    "tools": {
+      "mustRead": [
+        "m1"
+      ],
+      "draft": {
+        "to": [
+          "international@univ-valmont.example"
+        ],
+        "cc": []
+      },
+      "forbidden": []
+    },
+    "facts": {
+      "mustContain": [
+        "20 November",
+        "signature page"
+      ]
+    },
+    "output": {
+      "recipientRole": "administration",
+      "language": "en",
+      "greeting": true,
+      "mustContain": [
+        "18 November|Wednesday",
+        "signature"
+      ],
+      "mustNotContain": [
+        "pizza"
+      ]
+    }
+  }
+}

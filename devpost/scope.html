@@ -1,0 +1,253 @@
+<title>My Mail Agent Scope</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one reading column; the loop diagram and the boundary board break wider. */
+:root {
+  --bg: #f5f6f8;
+  --surface: #ffffff;
+  --fg: #18202a;
+  --muted: #5b6676;
+  --line: #d8dde5;
+  --accent: #2c4aa6;
+  --accent-soft: #e6ebf8;
+  --pass: #2a7a4b;
+  --fail: #b3372e;
+  --fail-soft: #fbe9e7;
+  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #10151c; --surface: #171e27; --fg: #e5e9ef; --muted: #98a3b3; --line: #2a3340;
+    --accent: #93a9f2; --accent-soft: #1f2a45; --pass: #6cc792; --fail: #f08a7f; --fail-soft: #3a1f1d;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #10151c; --surface: #171e27; --fg: #e5e9ef; --muted: #98a3b3; --line: #2a3340;
+  --accent: #93a9f2; --accent-soft: #1f2a45; --pass: #6cc792; --fail: #f08a7f; --fail-soft: #3a1f1d;
+  color-scheme: dark;
+}
+body {
+  background: var(--bg); color: var(--fg);
+  font: 16px/1.6 var(--body);
+}
+.page {
+  max-width: 980px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 40px 64px;
+  display: grid; gap: 48px;
+}
+.prose { max-width: 66ch; }
+h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; line-height: 1.15; }
+h1 { font-size: clamp(2.2rem, 6vw, 3.4rem); letter-spacing: -0.01em; }
+h2 { font-size: 1.5rem; }
+h3 { font-size: 1.05rem; font-family: var(--body); font-weight: 600; }
+p { margin: 0; }
+.eyebrow {
+  font: 500 0.75rem/1 var(--mono); text-transform: uppercase; letter-spacing: 0.09em; color: var(--muted);
+  display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center;
+}
+.status { color: var(--accent); background: var(--accent-soft); padding: 4px 8px; border-radius: 4px; }
+section { display: grid; gap: 16px; }
+.lede { font-size: 1.15rem; color: var(--muted); }
+a { color: var(--accent); text-underline-offset: 3px; }
+a:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 3px; }
+.mono { font-family: var(--mono); font-size: 0.9em; }
+
+/* Kernel: the four layers each scenario defines */
+.layers { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.layer { border-top: 3px solid var(--accent); background: var(--surface); padding: 14px 16px; display: grid; gap: 4px; }
+.layer .k { font: 500 0.75rem/1 var(--mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent); }
+.layer p { color: var(--muted); font-size: 0.95rem; }
+.roles { display: flex; flex-wrap: wrap; gap: 8px; }
+.role { font: 0.85rem/1 var(--mono); border: 1px solid var(--line); padding: 6px 10px; border-radius: 999px; background: var(--surface); }
+
+/* Loop diagram */
+.diagram { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px; }
+.diagram svg { display: block; width: 100%; min-width: 760px; height: auto; }
+.node rect { fill: var(--bg); stroke: var(--line); stroke-width: 1.5; }
+.node.hot rect { fill: var(--accent-soft); stroke: var(--accent); }
+.node .t { fill: var(--fg); font: 600 15px var(--body); }
+.node .s { fill: var(--muted); font: 12px var(--mono); }
+.edge { stroke: var(--muted); stroke-width: 1.5; fill: none; }
+.edge.back { stroke: var(--accent); stroke-dasharray: 5 4; }
+.head { fill: var(--muted); }
+.head.back { fill: var(--accent); }
+.lbl { fill: var(--muted); font: 12px var(--mono); }
+.lbl.back { fill: var(--accent); }
+
+/* Who */
+.two { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 24px; }
+.two > div { display: grid; gap: 6px; align-content: start; min-width: 0; }
+.tag { font: 500 0.75rem/1 var(--mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+
+/* Proof moment trace */
+blockquote { margin: 0; padding-left: 16px; border-left: 3px solid var(--line); font-size: 1.1rem; max-width: 66ch; }
+.trace { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; overflow-x: auto; }
+.trace-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--line); font: 0.8rem/1.4 var(--mono); color: var(--muted); }
+.trace table { width: 100%; border-collapse: collapse; font: 0.88rem/1.4 var(--mono); min-width: 560px; }
+.trace td { padding: 9px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.trace tr:last-child td { border-bottom: 0; }
+.trace td:first-child { color: var(--muted); width: 8.5em; }
+.v { font-weight: 500; white-space: nowrap; }
+.v.pass { color: var(--pass); }
+.v.fail { color: var(--fail); }
+.trace tr.bad td { background: var(--fail-soft); }
+.note { font-size: 0.85rem; color: var(--muted); }
+
+/* Boundary board */
+.board { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; align-items: start; }
+.col { display: grid; gap: 8px; min-width: 0; }
+.col h3 { display: flex; justify-content: space-between; align-items: baseline; padding-bottom: 6px; border-bottom: 2px solid var(--fg); }
+.col h3 .n { font: 0.8rem var(--mono); color: var(--muted); font-weight: 400; }
+.col.later h3 { border-color: var(--accent); }
+.col.cut h3 { border-color: var(--fail); }
+details { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; }
+summary { cursor: pointer; padding: 10px 12px; font-weight: 500; list-style-position: inside; }
+details > p { padding: 0 12px 12px 12px; color: var(--muted); font-size: 0.95rem; }
+
+/* Research + open questions */
+.refs { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.ref { border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; display: grid; gap: 6px; align-content: start; background: var(--surface); }
+.ref p { color: var(--muted); font-size: 0.93rem; }
+ol.qs { margin: 0; padding-left: 1.4em; display: grid; gap: 8px; max-width: 70ch; }
+footer { font: 0.8rem var(--mono); color: var(--muted); border-top: 1px solid var(--line); padding-top: 16px; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<main class="page">
+  <header style="display:grid;gap:14px">
+    <div class="eyebrow"><span>Scope</span><span class="status">status: approved</span><span>local first</span><span>terminal only</span></div>
+    <h1>My Mail Agent</h1>
+    <p class="lede prose">A traceable, benchmarked local multi-agent mail assistant for a university. The benchmark comes first, so every change answers “is the system getting better?”</p>
+  </header>
+
+  <section aria-labelledby="kernel">
+    <h2 id="kernel">The kernel</h2>
+    <p class="prose">A <strong>fictional university</strong> is the ground truth. Every scenario defines the expected behavior at each layer, not only the final email. Each decision is traced and scored on its own, and the whole run is scored end to end.</p>
+    <div class="layers">
+      <div class="layer"><span class="k">Route</span><p>Which path the planner picks: summarize, reply, or write as first sender.</p></div>
+      <div class="layer"><span class="k">Tool calls</span><p>Which MCP calls are made, with which parameters.</p></div>
+      <div class="layer"><span class="k">Facts</span><p>What information is pulled from mail and threads into the answer.</p></div>
+      <div class="layer"><span class="k">Tone</span><p>The register that fits the recipient's role.</p></div>
+    </div>
+    <div class="roles" aria-label="Recipient roles in the fictional university">
+      <span class="role">professor</span><span class="role">researcher</span><span class="role">student</span><span class="role">administration</span>
+    </div>
+  </section>
+
+  <section aria-labelledby="loop">
+    <h2 id="loop">The core loop</h2>
+    <div class="diagram">
+      <svg viewBox="0 0 900 230" role="img" aria-labelledby="loopTitle loopDesc">
+        <title id="loopTitle">Benchmark-first development loop</title>
+        <desc id="loopDesc">Change the system, run the benchmark on fictional-university scenarios, real agents run on a local model, every decision is traced, each layer and the whole run are scored, then the results feed the next change.</desc>
+        <defs>
+          <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="head" d="M0,0 L10,5 L0,10 z"/></marker>
+          <marker id="arrB" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="head back" d="M0,0 L10,5 L0,10 z"/></marker>
+        </defs>
+        <text class="lbl" x="270" y="20" text-anchor="middle">fictional-university scenarios</text>
+        <line class="edge" x1="270" y1="27" x2="270" y2="46" marker-end="url(#arr)"/>
+        <g class="node"><rect x="15" y="50" width="150" height="76" rx="8"/><text class="t" x="90" y="84" text-anchor="middle">Change</text><text class="s" x="90" y="104" text-anchor="middle">prompt · agent · model</text></g>
+        <g class="node"><rect x="195" y="50" width="150" height="76" rx="8"/><text class="t" x="270" y="84" text-anchor="middle">Run benchmark</text><text class="s" x="270" y="104" text-anchor="middle">static scenario set</text></g>
+        <g class="node hot"><rect x="375" y="50" width="150" height="76" rx="8"/><text class="t" x="450" y="84" text-anchor="middle">Real agents</text><text class="s" x="450" y="104" text-anchor="middle">on a local model</text></g>
+        <g class="node hot"><rect x="555" y="50" width="150" height="76" rx="8"/><text class="t" x="630" y="84" text-anchor="middle">Trace</text><text class="s" x="630" y="104" text-anchor="middle">every decision's I/O</text></g>
+        <g class="node hot"><rect x="735" y="50" width="150" height="76" rx="8"/><text class="t" x="810" y="84" text-anchor="middle">Score</text><text class="s" x="810" y="104" text-anchor="middle">per layer + whole run</text></g>
+        <line class="edge" x1="167" y1="88" x2="191" y2="88" marker-end="url(#arr)"/>
+        <line class="edge" x1="347" y1="88" x2="371" y2="88" marker-end="url(#arr)"/>
+        <line class="edge" x1="527" y1="88" x2="551" y2="88" marker-end="url(#arr)"/>
+        <line class="edge" x1="707" y1="88" x2="731" y2="88" marker-end="url(#arr)"/>
+        <path class="edge back" d="M810,128 V180 H90 V132" marker-end="url(#arrB)"/>
+        <text class="lbl back" x="450" y="204" text-anchor="middle">see what improved, what regressed, and where</text>
+        <text class="lbl" x="450" y="148" text-anchor="middle">planner/router → writer (reply · first sender) or summarizer</text>
+      </svg>
+    </div>
+  </section>
+
+  <section aria-labelledby="who">
+    <h2 id="who">Who it's for</h2>
+    <div class="two">
+      <div><span class="tag">Now</span><p>The learner, as the developer iterating on the system. They need to see which decision at which layer got better or worse after each change.</p></div>
+      <div><span class="tag">Eventually</span><p>Someone at a university dealing with “tons and tons of emails”: a professor, researcher, student or administrator. They need replies, new mails and summaries in the right tone for each recipient, without their mail leaving their machine.</p></div>
+    </div>
+  </section>
+
+  <section aria-labelledby="done">
+    <h2 id="done">What “working” looks like</h2>
+    <blockquote>“When I can trace every single decision, you know, input output that happens in my system. I can trace it, I can evaluate it. So I can tell if that is good or bad.”</blockquote>
+    <p class="prose">The proof moment: a scenario fails, and the trace points to the exact layer and decision that went wrong instead of only showing a bad final email.</p>
+    <div class="trace" role="figure" aria-label="Illustration of the proof moment">
+      <div class="trace-head"><span>scenario: reply · recipient role: professor</span><span>illustration, not real results</span></div>
+      <table>
+        <tr><td>route</td><td>write → reply</td><td class="v pass">pass</td></tr>
+        <tr><td>tool calls</td><td>schema and parameters match expected</td><td class="v pass">pass</td></tr>
+        <tr><td>facts</td><td>required thread facts present</td><td class="v pass">pass</td></tr>
+        <tr class="bad"><td>tone</td><td>register used: student · expected: professor</td><td class="v fail">fail</td></tr>
+        <tr><td>whole run</td><td>first failing layer: tone</td><td class="v fail">fail</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <section aria-labelledby="boundary">
+    <h2 id="boundary">The proof-of-concept boundary</h2>
+    <div class="board">
+      <div class="col">
+        <h3>Now <span class="n">6</span></h3>
+        <details><summary>Local deployment</summary><p>One user's agent on their own machine.</p></details>
+        <details><summary>The fictional university</summary><p>People with roles, their mail, and scenarios including edge cases.</p></details>
+        <details><summary>Real agents on a local model</summary><p>Planner/router, writer (reply and first sender), summarizer.</p></details>
+        <details><summary>Tracing</summary><p>Every decision's input and output at every layer.</p></details>
+        <details><summary>Per-layer and whole-system evaluation</summary><p>Each decision scored against the scenario's expectations, plus one score for the whole run.</p></details>
+        <details><summary>Component map</summary><p>Agents, the data objects they exchange, and how they interact, at the design level, without implementation details.</p></details>
+      </div>
+      <div class="col later">
+        <h3>Later <span class="n">5</span></h3>
+        <details><summary>Central deployment</summary><p>A university-hosted server for many trusted users, including tenant isolation: user A's mail must never reach user B. “Requires more thinking and more time… a layer of complexity I haven't really thought through.”</p></details>
+        <details><summary>Critic agent</summary><p>Replaces the current validator and loops feedback to the planner, summarizer and writer.</p></details>
+        <details><summary>Deterministic tool-call validator</summary><p>No LLM. Checks format (JSON/XML), parameter count and schema on every MCP call, at runtime too.</p></details>
+        <details><summary>Memory component</summary><p>Not thought through yet, and it will need its own evaluation.</p></details>
+        <details><summary>Live Gmail and Microsoft MCP demos</summary><p>Demo videos against the real mail services.</p></details>
+      </div>
+      <div class="col cut">
+        <h3>Cut <span class="n">2</span></h3>
+        <details><summary>Any UI or app</summary><p>“It's not an app… it's gonna remain in the terminal.” It reaches the world through MCPs.</p></details>
+        <details><summary>“Functions properly all the time”</summary><p>That's the long-term goal. This slice makes progress toward it measurable.</p></details>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="refs">
+    <h2 id="refs">Research map</h2>
+    <div class="refs">
+      <div class="ref"><h3><a href="https://arxiv.org/abs/2406.13352">AgentDojo</a></h3><p>Email, calendar and cloud workspace, with prompt injections placed inside email bodies. Success is checked by deterministic functions over the final environment state.</p></div>
+      <div class="ref"><h3><a href="https://arxiv.org/abs/2405.00823">WorkBench</a></h3><p>Simulated email, calendar and other databases. A task is graded by comparing the final state against the expected one, with no LLM judge.</p></div>
+      <div class="ref"><h3><a href="https://gorilla.cs.berkeley.edu/leaderboard.html">Berkeley Function Calling Leaderboard</a></h3><p>Checks tool calls by matching their structure (AST). Close to the deterministic tool-call validator idea.</p></div>
+    </div>
+  </section>
+
+  <section aria-labelledby="why">
+    <h2 id="why">Why it matters</h2>
+    <blockquote>“A very strong agentic system, with deterministic or evaluatable behavior and outcomes… every time I do something… check, am I going in a good direction… is the system getting better?”</blockquote>
+    <p class="prose note">The project started with one of the learner's professors. The learning goal is how to evaluate an agent system.</p>
+  </section>
+
+  <section aria-labelledby="open">
+    <h2 id="open">Open questions for the PRD and spec</h2>
+    <ol class="qs">
+      <li>How the fictional university's mailbox reaches the agents in a reproducible run, given that live Gmail or Outlook isn't static. A simulated mail MCP seems implied.</li>
+      <li>How to evaluate the whole system: “I'll have to find out a way.”</li>
+      <li>How to grade open-ended outputs such as reply quality and tone objectively.</li>
+      <li>Whether prompt-injection scenarios are in the first scenario set.</li>
+      <li>Whose agent each scenario runs as, meaning which role owns the local agent.</li>
+      <li>How to keep scores comparable when a local model isn't fully deterministic.</li>
+    </ol>
+  </section>
+
+  <footer>Companion to devpost/scope.md. The Markdown file is the main copy.</footer>
+</main>

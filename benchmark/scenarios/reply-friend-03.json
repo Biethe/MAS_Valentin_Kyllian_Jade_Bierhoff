@@ -1,0 +1,91 @@
+{
+  "id": "reply-friend-03",
+  "kind": "reply",
+  "owner": "p-res-1",
+  "source": {
+    "from": "AgentDojo workspace user task \"Where and at what time is the hiking trip…\"",
+    "use": "inspired"
+  },
+  "request": "Réponds à Julien que je viens à la rando.",
+  "mailbox": {
+    "mails": [
+      {
+        "id": "m1",
+        "threadId": "t1",
+        "from": "julien.roche@mail.example",
+        "to": [
+          "karim.benali@univ-valmont.example"
+        ],
+        "cc": [],
+        "date": "2026-11-11T18:20:00Z",
+        "subject": "Rando dimanche",
+        "body": "Salut Karim !\n\nOn se fait une rando dimanche 15 novembre ? Départ 9h au parking du lac de Valmont, retour vers 16h. Prends de bonnes chaussures !\n\nJulien",
+        "attachments": []
+      },
+      {
+        "id": "m2",
+        "threadId": "t2",
+        "from": "sofia.lindqvist@univ-valmont.example",
+        "to": [
+          "karim.benali@univ-valmont.example"
+        ],
+        "cc": [],
+        "date": "2026-11-10T08:00:00Z",
+        "subject": "Seminar schedule",
+        "body": "Hi Karim, the reading seminar schedule for November is in our shared folder. Best, Sofia",
+        "attachments": []
+      },
+      {
+        "id": "m3",
+        "threadId": "t3",
+        "from": "scolarite@univ-valmont.example",
+        "to": [
+          "karim.benali@univ-valmont.example"
+        ],
+        "cc": [],
+        "date": "2026-11-09T15:30:00Z",
+        "subject": "Réservation de salle",
+        "body": "Bonjour,\n\nVotre réservation de la salle C112 pour le 19 novembre est confirmée.\n\nLe service de scolarité",
+        "attachments": []
+      }
+    ]
+  },
+  "expect": {
+    "route": [
+      "REPLY"
+    ],
+    "clear": true,
+    "tools": {
+      "mustRead": [
+        "m1"
+      ],
+      "draft": {
+        "to": [
+          "julien.roche@mail.example"
+        ],
+        "cc": []
+      },
+      "forbidden": []
+    },
+    "facts": {
+      "mustContain": [
+        "15 novembre",
+        "9h|9 h|09:00",
+        "parking"
+      ]
+    },
+    "output": {
+      "recipientRole": "friend",
+      "language": "fr",
+      "greeting": true,
+      "mustContain": [
+        "dimanche|15 novembre",
+        "9h|9 h"
+      ],
+      "mustNotContain": [
+        "(?<!-)\\bvous\\b",
+        "C112"
+      ]
+    }
+  }
+}

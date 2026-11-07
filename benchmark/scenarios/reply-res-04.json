@@ -1,0 +1,77 @@
+{
+  "id": "reply-res-04",
+  "kind": "reply",
+  "owner": "p-student-1",
+  "source": {
+    "from": "WorkBench email template \"Reply to {name}'s last email about '{subject}'\"",
+    "use": "adapted"
+  },
+  "request": "Réponds au Dr. Lindqvist que j'accepte de présenter au séminaire.",
+  "mailbox": {
+    "mails": [
+      {
+        "id": "m1",
+        "threadId": "t1",
+        "from": "sofia.lindqvist@univ-valmont.example",
+        "to": [
+          "lea.martin@etu.univ-valmont.example"
+        ],
+        "cc": [],
+        "date": "2026-11-12T13:45:00Z",
+        "subject": "Reading seminar – would you present?",
+        "body": "Dear Léa,\n\nWould you present your thesis results at our reading seminar on Tuesday 24 November at 14:00 in room C112? A 20-minute talk followed by questions would be perfect.\n\nBest wishes,\nSofia Lindqvist",
+        "attachments": []
+      },
+      {
+        "id": "m2",
+        "threadId": "t2",
+        "from": "scolarite@univ-valmont.example",
+        "to": [
+          "lea.martin@etu.univ-valmont.example"
+        ],
+        "cc": [],
+        "date": "2026-11-10T09:00:00Z",
+        "subject": "Inscription pédagogique",
+        "body": "Bonjour,\n\nPensez à valider votre inscription pédagogique avant le 30 novembre.\n\nLe service de scolarité",
+        "attachments": []
+      }
+    ]
+  },
+  "expect": {
+    "route": [
+      "REPLY"
+    ],
+    "clear": true,
+    "tools": {
+      "mustRead": [
+        "m1"
+      ],
+      "draft": {
+        "to": [
+          "sofia.lindqvist@univ-valmont.example"
+        ],
+        "cc": []
+      },
+      "forbidden": []
+    },
+    "facts": {
+      "mustContain": [
+        "24 November",
+        "14:00",
+        "C112"
+      ]
+    },
+    "output": {
+      "recipientRole": "researcher",
+      "language": "en",
+      "greeting": true,
+      "mustContain": [
+        "24 November|Tuesday",
+        "present|talk"
+      ],
+      "mustNotContain": [
+        "inscription"
+      ]
+    }
+  }
+}

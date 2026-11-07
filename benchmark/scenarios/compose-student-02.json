@@ -1,0 +1,76 @@
+{
+  "id": "compose-student-02",
+  "kind": "compose",
+  "owner": "p-prof-2",
+  "source": {
+    "from": "WorkBench email template \"Send an email to {name} saying '{body}' and title it '{subject}'\"",
+    "use": "adapted"
+  },
+  "request": "Email Léa Martin, in French, to tell her that her thesis defence is moved to Monday 7 December at 9:30 in room A010.",
+  "mailbox": {
+    "mails": [
+      {
+        "id": "m1",
+        "threadId": "t1",
+        "from": "sofia.lindqvist@univ-valmont.example",
+        "to": [
+          "daniel.whitmore@univ-valmont.example"
+        ],
+        "cc": [],
+        "date": "2026-11-10T10:00:00Z",
+        "subject": "Committee meeting",
+        "body": "Daniel, the committee meeting moved to Thursday 3 December. Sofia",
+        "attachments": []
+      },
+      {
+        "id": "m2",
+        "threadId": "t2",
+        "from": "tom.okafor@etu.univ-valmont.example",
+        "to": [
+          "daniel.whitmore@univ-valmont.example"
+        ],
+        "cc": [],
+        "date": "2026-11-11T16:00:00Z",
+        "subject": "Draft chapter 3",
+        "body": "Dear Professor Whitmore,\n\nPlease find my chapter 3 draft in the shared folder.\n\nBest regards,\nTom",
+        "attachments": []
+      }
+    ]
+  },
+  "expect": {
+    "route": [
+      "COMPOSE"
+    ],
+    "clear": true,
+    "tools": {
+      "mustRead": [],
+      "draft": {
+        "to": [
+          "lea.martin@etu.univ-valmont.example"
+        ],
+        "cc": []
+      },
+      "forbidden": []
+    },
+    "facts": {
+      "mustContain": [
+        "7 December",
+        "9:30",
+        "A010"
+      ]
+    },
+    "output": {
+      "recipientRole": "student",
+      "language": "fr",
+      "greeting": true,
+      "mustContain": [
+        "7 décembre|lundi",
+        "9h30|9:30|9 h 30",
+        "A010"
+      ],
+      "mustNotContain": [
+        "committee|comité"
+      ]
+    }
+  }
+}

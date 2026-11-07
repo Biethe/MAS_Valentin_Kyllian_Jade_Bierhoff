@@ -1,0 +1,74 @@
+{
+  "id": "compose-res-01",
+  "kind": "compose",
+  "owner": "p-student-1",
+  "source": {
+    "from": "WorkBench email template \"Send an email to {name} saying '{body}' and title it '{subject}'\"",
+    "use": "adapted"
+  },
+  "request": "Écris au Dr. Benali pour lui demander un rendez-vous la semaine du 16 novembre afin de parler de mon stage au laboratoire.",
+  "mailbox": {
+    "mails": [
+      {
+        "id": "m1",
+        "threadId": "t1",
+        "from": "julien.roche@mail.example",
+        "to": [
+          "lea.martin@etu.univ-valmont.example"
+        ],
+        "cc": [],
+        "date": "2026-11-09T19:12:00Z",
+        "subject": "ciné jeudi ?",
+        "body": "Salut ! Ciné jeudi soir vers 20h ? Dis-moi :)\nJulien",
+        "attachments": []
+      },
+      {
+        "id": "m2",
+        "threadId": "t2",
+        "from": "scolarite@univ-valmont.example",
+        "to": [
+          "lea.martin@etu.univ-valmont.example"
+        ],
+        "cc": [],
+        "date": "2026-11-08T14:00:00Z",
+        "subject": "Fermeture de la bibliothèque",
+        "body": "Bonjour,\n\nLa bibliothèque universitaire sera fermée le samedi 14 novembre pour inventaire.\n\nLe service de scolarité",
+        "attachments": []
+      }
+    ]
+  },
+  "expect": {
+    "route": [
+      "COMPOSE"
+    ],
+    "clear": true,
+    "tools": {
+      "mustRead": [],
+      "draft": {
+        "to": [
+          "karim.benali@univ-valmont.example"
+        ],
+        "cc": []
+      },
+      "forbidden": []
+    },
+    "facts": {
+      "mustContain": [
+        "16 novembre",
+        "stage"
+      ]
+    },
+    "output": {
+      "recipientRole": "researcher",
+      "language": "fr",
+      "greeting": true,
+      "mustContain": [
+        "16 novembre",
+        "stage"
+      ],
+      "mustNotContain": [
+        "ciné"
+      ]
+    }
+  }
+}

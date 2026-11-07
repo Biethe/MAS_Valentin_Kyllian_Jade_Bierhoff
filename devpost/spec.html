@@ -1,0 +1,281 @@
+<title>My Mail Agent Spec</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one reading column; architecture diagram breaks wider. Same system as scope and PRD pages. */
+:root {
+  --bg: #f5f6f8; --surface: #ffffff; --fg: #18202a; --muted: #5b6676; --line: #d8dde5;
+  --accent: #2c4aa6; --accent-soft: #e6ebf8; --pass: #2a7a4b; --fail: #b3372e;
+  --warn: #8a5a00; --warn-soft: #fbf1dc;
+  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #10151c; --surface: #171e27; --fg: #e5e9ef; --muted: #98a3b3; --line: #2a3340;
+    --accent: #93a9f2; --accent-soft: #1f2a45; --pass: #6cc792; --fail: #f08a7f;
+    --warn: #e8b85c; --warn-soft: #3a2f17; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #10151c; --surface: #171e27; --fg: #e5e9ef; --muted: #98a3b3; --line: #2a3340;
+  --accent: #93a9f2; --accent-soft: #1f2a45; --pass: #6cc792; --fail: #f08a7f;
+  --warn: #e8b85c; --warn-soft: #3a2f17; color-scheme: dark;
+}
+body { background: var(--bg); color: var(--fg); font: 16px/1.6 var(--body); }
+.page { max-width: 980px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 40px 64px; display: grid; gap: 48px; }
+.prose { max-width: 68ch; }
+h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; line-height: 1.15; }
+h1 { font-size: clamp(2.2rem, 6vw, 3.4rem); letter-spacing: -0.01em; }
+h2 { font-size: 1.5rem; }
+h3 { font-size: 1.05rem; font-family: var(--body); font-weight: 600; }
+p { margin: 0; }
+.eyebrow { font: 500 0.75rem/1 var(--mono); text-transform: uppercase; letter-spacing: 0.09em; color: var(--muted); display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
+.status { color: var(--accent); background: var(--accent-soft); padding: 4px 8px; border-radius: 4px; }
+section { display: grid; gap: 16px; }
+.lede { font-size: 1.15rem; color: var(--muted); }
+summary:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 3px; }
+code, .mono { font-family: var(--mono); font-size: 0.88em; }
+ol.plain { margin: 0; padding-left: 1.4em; display: grid; gap: 8px; max-width: 70ch; }
+ol.plain li strong { font-weight: 600; }
+
+.diagram { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px; }
+.diagram svg { display: block; width: 100%; min-width: 800px; height: auto; }
+.node rect { fill: var(--bg); stroke: var(--line); stroke-width: 1.5; }
+.node.hot rect { fill: var(--accent-soft); stroke: var(--accent); }
+.node.ext rect { fill: var(--warn-soft); stroke: var(--warn); stroke-dasharray: 4 3; }
+.node .t { fill: var(--fg); font: 600 14px var(--body); }
+.node .s { fill: var(--muted); font: 11.5px var(--mono); }
+.edge { stroke: var(--muted); stroke-width: 1.5; fill: none; }
+.edge.trace { stroke: var(--accent); stroke-dasharray: 4 4; }
+.head { fill: var(--muted); } .head.trace { fill: var(--accent); }
+.lbl { fill: var(--muted); font: 11.5px var(--mono); } .lbl.trace { fill: var(--accent); }
+
+.steps { display: grid; gap: 12px; }
+.step-nav { display: flex; flex-wrap: wrap; gap: 6px; }
+.step-nav button { font: 500 0.85rem var(--mono); border: 1px solid var(--line); background: var(--surface); color: var(--fg); padding: 6px 12px; border-radius: 999px; cursor: pointer; }
+.step-nav button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+.step-panel { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px 18px; display: grid; gap: 8px; max-width: 72ch; }
+.step-panel .n { font: 500 0.75rem var(--mono); color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; }
+.step-panel p { color: var(--muted); }
+.step-panel .meta { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.tag { font: 500 0.72rem var(--mono); padding: 2px 7px; border-radius: 4px; background: var(--accent-soft); color: var(--accent); white-space: nowrap; }
+.tag.layer { background: var(--warn-soft); color: var(--warn); }
+
+.comps { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; align-items: start; }
+details { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; min-width: 0; }
+summary { cursor: pointer; padding: 12px 14px; font-weight: 600; }
+details > div { padding: 0 14px 14px; display: grid; gap: 8px; }
+details p { color: var(--muted); font-size: 0.95rem; }
+.refs { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.term { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; overflow-x: auto; }
+.term pre { margin: 0; padding: 14px; font: 0.86rem/1.7 var(--mono); }
+.term .dim { color: var(--muted); }
+
+.two { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; }
+.two > div { display: grid; gap: 8px; align-content: start; min-width: 0; }
+ul.plain { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; }
+ul.plain li { color: var(--muted); } ul.plain li strong { color: var(--fg); font-weight: 600; }
+.unknown { border-left: 3px solid var(--accent); background: var(--accent-soft); padding: 12px 16px; display: grid; gap: 8px; max-width: 72ch; }
+.unknown .k { font: 500 0.75rem var(--mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent); }
+.verify { border: 1px dashed var(--warn); background: var(--warn-soft); border-radius: 6px; padding: 12px 14px; display: grid; gap: 6px; max-width: 72ch; }
+.verify .k { font: 500 0.75rem var(--mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--warn); }
+footer { font: 0.8rem var(--mono); color: var(--muted); border-top: 1px solid var(--line); padding-top: 16px; }
+</style>
+
+<main class="page">
+  <header style="display:grid;gap:14px">
+    <div class="eyebrow"><span>Technical spec</span><span class="status">status: approved</span><span>Java 21 · Ollama · MCP stdio</span></div>
+    <h1>My Mail Agent</h1>
+    <p class="lede prose">Four pieces on your machine: a fictional university mailbox served over MCP, your agent pipeline on a local model, a tracer that writes down every step, and a benchmark that checks every layer and compares runs.</p>
+  </header>
+
+  <section aria-labelledby="arch">
+    <h2 id="arch">How the pieces connect</h2>
+    <div class="diagram">
+      <svg viewBox="0 0 900 330" role="img" aria-labelledby="at ad">
+        <title id="at">Architecture</title>
+        <desc id="ad">The bench runner starts the mailbox MCP server per scenario and runs the pipeline. The pipeline's agents call Ollama qwen3.5:4b; workflow code calls the mailbox through the MCP client over stdio. The tracer records every LLM and tool call. Checks score layers, then a separate llama3.1:8b judging pass grades the qualitative criteria, results are saved to runs, and the report prints the verdict.</desc>
+        <defs>
+          <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="head" d="M0,0 L10,5 L0,10 z"/></marker>
+          <marker id="b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="head trace" d="M0,0 L10,5 L0,10 z"/></marker>
+        </defs>
+        <g class="node"><rect x="20" y="30" width="150" height="70" rx="8"/><text class="t" x="95" y="60" text-anchor="middle">./bench run</text><text class="s" x="95" y="80" text-anchor="middle">Bench · runner</text></g>
+        <g class="node"><rect x="20" y="140" width="150" height="70" rx="8"/><text class="t" x="95" y="170" text-anchor="middle">Scenarios</text><text class="s" x="95" y="190" text-anchor="middle">10 × JSON + key</text></g>
+        <g class="node hot"><rect x="240" y="30" width="190" height="70" rx="8"/><text class="t" x="335" y="60" text-anchor="middle">Pipeline</text><text class="s" x="335" y="80" text-anchor="middle">planner · drafter · summarizer</text></g>
+        <g class="node ext"><rect x="500" y="30" width="170" height="70" rx="8"/><text class="t" x="585" y="60" text-anchor="middle">Ollama</text><text class="s" x="585" y="80" text-anchor="middle">qwen3.5:4b · T0 · seed 42</text></g>
+        <g class="node hot"><rect x="240" y="140" width="190" height="70" rx="8"/><text class="t" x="335" y="170" text-anchor="middle">MCP mail client</text><text class="s" x="335" y="190" text-anchor="middle">code-driven calls</text></g>
+        <g class="node hot"><rect x="500" y="140" width="170" height="70" rx="8"/><text class="t" x="585" y="170" text-anchor="middle">Mailbox server</text><text class="s" x="585" y="190" text-anchor="middle">MCP stdio · no send</text></g>
+        <g class="node"><rect x="730" y="85" width="150" height="70" rx="8"/><text class="t" x="805" y="115" text-anchor="middle">Tracer</text><text class="s" x="805" y="135" text-anchor="middle">traces/*.jsonl</text></g>
+        <g class="node hot"><rect x="240" y="250" width="190" height="62" rx="8"/><text class="t" x="335" y="276" text-anchor="middle">Checks</text><text class="s" x="335" y="296" text-anchor="middle">route · tools · facts · output</text></g>
+        <g class="node ext"><rect x="500" y="250" width="170" height="62" rx="8"/><text class="t" x="585" y="276" text-anchor="middle">Judge</text><text class="s" x="585" y="296" text-anchor="middle">llama3.1:8b · own pass</text></g>
+        <g class="node"><rect x="730" y="250" width="150" height="62" rx="8"/><text class="t" x="805" y="276" text-anchor="middle">Report</text><text class="s" x="805" y="296" text-anchor="middle">verdict · diff · show</text></g>
+        <line class="edge" x1="95" y1="138" x2="95" y2="104" marker-end="url(#a)"/>
+        <line class="edge" x1="172" y1="65" x2="236" y2="65" marker-end="url(#a)"/>
+        <line class="edge" x1="432" y1="65" x2="496" y2="65" marker-end="url(#a)"/>
+        <line class="edge" x1="335" y1="102" x2="335" y2="136" marker-end="url(#a)"/>
+        <line class="edge" x1="432" y1="175" x2="496" y2="175" marker-end="url(#a)"/>
+        <text class="lbl" x="464" y="166" text-anchor="middle">stdio</text>
+        <path class="edge" d="M130,100 C130,230 520,120 560,136" marker-end="url(#a)"/>
+        <text class="lbl" x="200" y="228">spawns per scenario</text>
+        <path class="edge trace" d="M672,60 C705,60 705,105 726,110" marker-end="url(#b)"/>
+        <path class="edge trace" d="M672,180 C705,180 705,135 726,130" marker-end="url(#b)"/>
+        <line class="edge" x1="805" y1="157" x2="805" y2="246" marker-end="url(#a)"/>
+        <text class="lbl trace" x="812" y="205">results.json</text>
+        <line class="edge" x1="432" y1="281" x2="496" y2="281" marker-end="url(#a)"/>
+        <line class="edge" x1="672" y1="281" x2="726" y2="281" marker-end="url(#a)"/>
+        <path class="edge" d="M730,140 C640,240 460,230 420,248" marker-end="url(#a)"/>
+      </svg>
+    </div>
+  </section>
+
+  <section aria-labelledby="journey">
+    <h2 id="journey">One run, step by step</h2>
+    <div class="steps" id="steps">
+      <div class="step-nav" role="group" aria-label="Journey steps"></div>
+      <div class="step-panel" aria-live="polite"><span class="n"></span><h3></h3><p></p><div class="meta"></div></div>
+    </div>
+    <noscript><ol class="plain">
+      <li>Change one thing and run <code>./bench run</code>.</li><li>The runner records the setup.</li><li>A fresh mailbox server starts for each scenario.</li>
+      <li>The planner splits the request (route).</li><li>Code calls search/read mail (tool calls).</li><li>The planner extracts facts and tags injections (facts).</li>
+      <li>Drafter + create_draft, summarizer, or a question (output).</li><li>Checks and judge score; results are saved.</li><li>Verdict, then diff and show.</li>
+    </ol></noscript>
+  </section>
+
+  <section aria-labelledby="run">
+    <h2 id="run">How you run it</h2>
+    <div class="term"><pre><span class="dim"># prerequisites: Java 21, Maven, ollama serve, qwen3.5:4b + llama3.1:8b pulled</span>
+mvn -q package      <span class="dim"># compile + copy dependencies to target/lib</span>
+./bench run         <span class="dim"># every scenario → global verdict</span>
+./bench diff        <span class="dim"># per-component flips vs previous run</span>
+./bench show &lt;id&gt;   <span class="dim"># one scenario's trace, step by step</span></pre></div>
+  </section>
+
+  <section aria-labelledby="comps">
+    <h2 id="comps">Components</h2>
+    <div class="comps">
+      <details open><summary>Mailbox Server</summary><div>
+        <p>A local MCP server over stdio, holding one scenario's simulated mailbox. Tools: <code>search_mail</code>, <code>read_mail</code>, <code>read_thread</code>, <code>create_draft</code>. There's no send tool, so the server itself enforces draft-only.</p>
+        <div class="refs"><span class="tag">mailbox/MailboxServer.java</span><span class="tag">prd › Drafts, Never Sends</span><span class="tag">prd › Scenarios</span></div>
+      </div></details>
+      <details><summary>MCP Mail Client</summary><div>
+        <p>Implements <code>MailClientMcp</code> plus <code>createDraft</code> over stdio. Every call is traced. The real Gmail and Outlook MCPs plug in here later.</p>
+        <div class="refs"><span class="tag">service/mcp/</span><span class="tag">prd › Tracing</span></div>
+      </div></details>
+      <details><summary>Ollama Client</summary><div>
+        <p><code>POST /api/chat</code> with temperature 0 and seed 42, using the JDK HttpClient. Each call is traced, and the model digests are recorded per run.</p>
+        <div class="refs"><span class="tag">service/llm/OllamaClient.java</span></div>
+      </div></details>
+      <details><summary>Agents</summary><div>
+        <p>Your planner, drafter and summarizer, backed by Ollama. Adds block parsers (a parse failure makes the scenario invalid), the language rule, and a <code>SUSPICIOUS_INSTRUCTION</code> kind for injections. The validator isn't wired into this slice.</p>
+        <div class="refs"><span class="tag">service/agent/</span><span class="tag">prompt/</span><span class="tag">prd › Language</span><span class="tag">prd › Injected Instructions</span></div>
+      </div></details>
+      <details><summary>Pipeline</summary><div>
+        <p>Routes each atomic instruction. REPLY and COMPOSE go to the draft workflow, SUMMARIZE to the summary workflow, and anything unclear or without a match goes to the ask-user path, which ends the scenario. The code makes the tool calls.</p>
+        <div class="refs"><span class="tag">workflow/</span><span class="tag">prd › The Core Journey</span><span class="tag">prd › Missing Information</span></div>
+      </div></details>
+      <details><summary>Tracer</summary><div>
+        <p>One JSON line per step, tagged by layer: route, tool, facts, output, ask, judge.</p>
+        <div class="refs"><span class="tag">trace/Tracer.java</span><span class="tag">prd › Tracing</span></div>
+      </div></details>
+      <details><summary>Scenario Set</summary><div>
+        <p>A fictional university (people and roles), tone profiles, and 10 scenarios (2 per kind) in French and English, each with a per-layer answer key.</p>
+        <div class="refs"><span class="tag">scenarios/</span><span class="tag">prd › Scenarios</span><span class="tag">prd › Tone Profiles</span></div>
+      </div></details>
+      <details><summary>Layer Checks</summary><div>
+        <p>Plain-code checks in order:</p>
+        <ul class="plain">
+          <li><strong>Route:</strong> instruction types and the clear flag.</li>
+          <li><strong>Tool calls:</strong> required reads, draft fields, forbidden arguments.</li>
+          <li><strong>Facts:</strong> regex patterns, plus injection tagging.</li>
+          <li><strong>Output:</strong> required and forbidden patterns, greeting, language (stopword ratio), invented emails, dates and numbers, and the 50% word ratio for summaries.</li>
+        </ul>
+        <p>Every layer is computed; the outcome uses the first one that fails.</p>
+        <div class="refs"><span class="tag">bench/Checks.java</span><span class="tag">ChecksTest.java</span><span class="tag">prd › Run Outcomes</span><span class="tag">prd › Output Check: Summaries</span></div>
+      </div></details>
+      <details><summary>LLM Judge</summary><div>
+        <p>Runs on <code>llama3.1:8b</code> (bigger, open weights, fast and non-reasoning, a different family from the agents), in its own pass after all scenarios so only one model sits on the 8 GB GPU at a time. One criterion per call, answering pass or fail plus a reason. Verdicts are cached by a hash of the output, and an unreadable answer is counted as a judge error, separate from a system failure.</p>
+        <div class="refs"><span class="tag">bench/Judge.java</span><span class="tag">prd › Output Check: Replies and New Mails</span></div>
+      </div></details>
+      <details><summary>Runner and Report</summary><div>
+        <p>A preflight checks Ollama and both models before anything runs. Each scenario has a 5-minute timeout. The verdict compares successful-scenario counts, with per-layer passes as tie-breakers; the first run is the baseline. Runs with different setups print "not comparable" instead of a verdict.</p>
+        <div class="refs"><span class="tag">bench/Bench.java</span><span class="tag">bench/Report.java</span><span class="tag">prd › Comparing Runs</span></div>
+      </div></details>
+    </div>
+  </section>
+
+  <section aria-labelledby="data">
+    <h2 id="data">Where data lives</h2>
+    <div class="two">
+      <div><h3>In git</h3><ul class="plain"><li><strong>scenarios/*.json</strong>: mailbox, request, answer key per layer.</li><li><strong>university.json, tone-profiles.json</strong>: people, roles, default tones.</li></ul></div>
+      <div><h3>Local, gitignored</h3><ul class="plain"><li><strong>runs/&lt;time&gt;/results.json</strong>: setup, outcome, and every layer per scenario.</li><li><strong>runs/&lt;time&gt;/traces/*.jsonl</strong>: every step.</li><li><strong>runs/judge-cache.json</strong>: cached verdicts.</li></ul></div>
+    </div>
+  </section>
+
+  <section aria-labelledby="dec">
+    <h2 id="dec">Decisions and open issues</h2>
+    <div class="two">
+      <div><h3>Your decisions</h3><ul class="plain">
+        <li><strong>Code-driven tool calls</strong>: may revisit.</li>
+        <li><strong>A local MCP server</strong> for the fictional mailbox.</li>
+        <li><strong>A judge from a different model family</strong>, French and English: <strong>llama3.1:8b</strong> in a separate judging pass.</li>
+        <li><strong>Reply in the received language</strong>; new mail in the user's language, default French.</li>
+        <li><strong>Draft, never send.</strong></li>
+        <li><strong>A UI</strong> goes to Later.</li>
+      </ul></div>
+      <div><h3>Simplified on purpose</h3><ul class="plain">
+        <li><strong>Simulated mailbox</strong> instead of live mail.</li>
+        <li><strong>The ask-user path ends the scenario.</strong></li>
+        <li><strong>Pattern-based fact checks</strong> and an entity-based hallucination check.</li>
+        <li><strong>Stopword-ratio language check.</strong></li>
+        <li><strong>10 scenarios.</strong></li>
+      </ul></div>
+    </div>
+    <div class="unknown"><span class="k">The useful unknown</span>
+      <p>Can an LLM judge be stable? Yes, with pass/fail verdicts, temperature 0 and a seed, cached verdicts, and recorded setups. But stable isn't the same as correct. After the first run, hand-check the judge on the writing scenarios, and swap the model or prompt if you disagree with more than one or two.</p>
+    </div>
+    <div class="verify"><span class="k">Verify first in the build</span>
+      <p>The MCP Java SDK 2.0.0 stdio API and the Jackson version it brings.</p>
+      <p>Whether Ollama repeats outputs on this machine with an unchanged system.</p>
+    </div>
+  </section>
+
+  <footer>Companion to devpost/spec.md. The Markdown file is the main copy.</footer>
+</main>
+
+<script>
+(() => {
+  const steps = [
+    ["Change and run", "Change one thing, for example DrafterSystemPrompt, then run ./bench run.", ["prd › The Core Journey"]],
+    ["Record setup", "Git commit and uncommitted changes, model names and digests, seed, judge prompt version, scenario-set hash.", ["bench/Bench.java"]],
+    ["Fresh mailbox", "The runner starts MailboxServer with this scenario's mail, so every scenario starts clean.", ["mailbox/MailboxServer.java"]],
+    ["Route", "The planner splits the request into atomic instructions (REPLY / COMPOSE / SUMMARIZE) with a clear flag.", ["layer: route", "PlannerSystemPrompt"]],
+    ["Tool calls", "Workflow code calls search_mail and read_mail with parameters the planner produced. Each call is traced.", ["layer: tool calls", "service/mcp/"]],
+    ["Facts", "The planner extracts atomic information from each mail and attachment. Injected orders are tagged SUSPICIOUS_INSTRUCTION and kept out of briefs.", ["layer: facts"]],
+    ["Output", "Brief → drafter → create_draft, or brief → summarizer, or one question to the user, which ends the scenario.", ["layer: output", "workflow/"]],
+    ["Score", "Checks run in order against the answer key. After all scenarios, a separate llama3.1:8b pass judges tone, relevance and conciseness. The outcome is invalid, failed at a layer, or successful.", ["bench/Checks.java", "bench/Judge.java"]],
+    ["Verdict", "results.json is saved. The global verdict against the previous run prints first; then ./bench diff and ./bench show <id> for detail.", ["bench/Report.java", "prd › Comparing Runs"]]
+  ];
+  const root = document.getElementById("steps");
+  const nav = root.querySelector(".step-nav"), panel = root.querySelector(".step-panel");
+  const show = i => {
+    nav.querySelectorAll("button").forEach((b, j) => b.setAttribute("aria-pressed", String(i === j)));
+    panel.querySelector(".n").textContent = `Step ${i + 1} of ${steps.length}`;
+    panel.querySelector("h3").textContent = steps[i][0];
+    panel.querySelector("p").textContent = steps[i][1];
+    const meta = panel.querySelector(".meta"); meta.textContent = "";
+    steps[i][2].forEach(t => { const s = document.createElement("span"); s.className = t.startsWith("layer") ? "tag layer" : "tag"; s.textContent = t; meta.appendChild(s); });
+  };
+  steps.forEach(([t], i) => {
+    const b = document.createElement("button");
+    b.type = "button"; b.id = `spec-step-${i + 1}`; b.textContent = `${i + 1} · ${t}`;
+    b.addEventListener("click", () => show(i)); nav.appendChild(b);
+  });
+  show(0);
+})();
+</script>

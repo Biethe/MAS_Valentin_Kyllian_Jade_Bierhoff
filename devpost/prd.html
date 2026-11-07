@@ -1,0 +1,297 @@
+<title>My Mail Agent PRD</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one reading column; journey diagram and check board break wider. Same system as the scope page. */
+:root {
+  --bg: #f5f6f8; --surface: #ffffff; --fg: #18202a; --muted: #5b6676; --line: #d8dde5;
+  --accent: #2c4aa6; --accent-soft: #e6ebf8; --pass: #2a7a4b; --fail: #b3372e; --fail-soft: #fbe9e7;
+  --warn: #8a5a00; --warn-soft: #fbf1dc;
+  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #10151c; --surface: #171e27; --fg: #e5e9ef; --muted: #98a3b3; --line: #2a3340;
+    --accent: #93a9f2; --accent-soft: #1f2a45; --pass: #6cc792; --fail: #f08a7f; --fail-soft: #3a1f1d;
+    --warn: #e8b85c; --warn-soft: #3a2f17; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #10151c; --surface: #171e27; --fg: #e5e9ef; --muted: #98a3b3; --line: #2a3340;
+  --accent: #93a9f2; --accent-soft: #1f2a45; --pass: #6cc792; --fail: #f08a7f; --fail-soft: #3a1f1d;
+  --warn: #e8b85c; --warn-soft: #3a2f17; color-scheme: dark;
+}
+body { background: var(--bg); color: var(--fg); font: 16px/1.6 var(--body); }
+.page {
+  max-width: 980px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 40px 64px; display: grid; gap: 48px;
+}
+.prose { max-width: 66ch; }
+h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; line-height: 1.15; }
+h1 { font-size: clamp(2.2rem, 6vw, 3.4rem); letter-spacing: -0.01em; }
+h2 { font-size: 1.5rem; }
+h3 { font-size: 1.05rem; font-family: var(--body); font-weight: 600; }
+p { margin: 0; }
+.eyebrow { font: 500 0.75rem/1 var(--mono); text-transform: uppercase; letter-spacing: 0.09em; color: var(--muted); display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
+.status { color: var(--accent); background: var(--accent-soft); padding: 4px 8px; border-radius: 4px; }
+section { display: grid; gap: 16px; }
+.lede { font-size: 1.15rem; color: var(--muted); }
+a { color: var(--accent); text-underline-offset: 3px; }
+summary:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 3px; }
+.mono { font-family: var(--mono); font-size: 0.9em; }
+.expand { border-left: 3px solid var(--accent); padding: 10px 14px; background: var(--accent-soft); max-width: 70ch; }
+.expand .k { font: 500 0.75rem/1 var(--mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent); display: block; margin-bottom: 6px; }
+
+/* Journey diagram */
+.diagram { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px; }
+.diagram svg { display: block; width: 100%; min-width: 780px; height: auto; }
+.node rect { fill: var(--bg); stroke: var(--line); stroke-width: 1.5; }
+.node.hot rect { fill: var(--accent-soft); stroke: var(--accent); }
+.node .t { fill: var(--fg); font: 600 14px var(--body); }
+.node .s { fill: var(--muted); font: 11.5px var(--mono); }
+.edge { stroke: var(--muted); stroke-width: 1.5; fill: none; }
+.edge.back { stroke: var(--accent); stroke-dasharray: 5 4; }
+.head { fill: var(--muted); } .head.back { fill: var(--accent); }
+.lbl { fill: var(--muted); font: 12px var(--mono); } .lbl.back { fill: var(--accent); }
+
+/* Step controls */
+.steps { display: grid; gap: 12px; }
+.step-nav { display: flex; flex-wrap: wrap; gap: 6px; }
+.step-nav button { font: 500 0.85rem var(--mono); border: 1px solid var(--line); background: var(--surface); color: var(--fg); padding: 6px 12px; border-radius: 999px; cursor: pointer; }
+.step-nav button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+.step-panel { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px 18px; display: grid; gap: 6px; max-width: 70ch; }
+.step-panel .n { font: 500 0.75rem var(--mono); color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; }
+.step-panel p { color: var(--muted); }
+
+/* Outcomes */
+.outcomes { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.oc { background: var(--surface); padding: 14px 16px; border-top: 3px solid var(--line); display: grid; gap: 4px; align-content: start; }
+.oc.inv { border-color: var(--warn); } .oc.fl { border-color: var(--fail); } .oc.ok { border-color: var(--pass); }
+.oc .k { font: 500 0.8rem var(--mono); text-transform: uppercase; letter-spacing: 0.08em; }
+.oc.inv .k { color: var(--warn); } .oc.fl .k { color: var(--fail); } .oc.ok .k { color: var(--pass); }
+.oc p { color: var(--muted); font-size: 0.95rem; }
+
+/* Terminal mock of the result screen */
+.term { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; overflow-x: auto; }
+.term-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--line); font: 0.8rem/1.4 var(--mono); color: var(--muted); }
+.term pre { margin: 0; padding: 14px; font: 0.86rem/1.6 var(--mono); min-width: 520px; }
+.term .ok { color: var(--pass); } .term .bad { color: var(--fail); } .term .dim { color: var(--muted); }
+
+/* Feature reveals */
+.features { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; align-items: start; }
+details { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; min-width: 0; }
+summary { cursor: pointer; padding: 12px 14px; font-weight: 600; }
+details > div { padding: 0 14px 14px; display: grid; gap: 8px; }
+details p { color: var(--muted); font-size: 0.95rem; }
+ul.checks { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: 0.95rem; }
+ul.checks li { display: grid; grid-template-columns: 1.2em 1fr; gap: 6px; }
+ul.checks li::before { content: "□"; color: var(--accent); font-family: var(--mono); }
+.tag { font: 500 0.7rem var(--mono); padding: 2px 6px; border-radius: 4px; background: var(--accent-soft); color: var(--accent); white-space: nowrap; }
+.tag.judge { background: var(--warn-soft); color: var(--warn); }
+.roles { display: flex; flex-wrap: wrap; gap: 8px; }
+.role { font: 0.85rem/1 var(--mono); border: 1px solid var(--line); padding: 6px 10px; border-radius: 999px; background: var(--surface); }
+.role.new { border-color: var(--accent); color: var(--accent); }
+
+/* Lists */
+.two { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; }
+.two > div { display: grid; gap: 8px; align-content: start; min-width: 0; }
+ul.plain { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; }
+ul.plain li { color: var(--muted); } ul.plain li strong { color: var(--fg); font-weight: 600; }
+.assume { border: 1px dashed var(--warn); background: var(--warn-soft); border-radius: 6px; padding: 12px 14px; display: grid; gap: 6px; max-width: 72ch; }
+.assume .k { font: 500 0.75rem var(--mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--warn); }
+footer { font: 0.8rem var(--mono); color: var(--muted); border-top: 1px solid var(--line); padding-top: 16px; }
+</style>
+
+<main class="page">
+  <header style="display:grid;gap:14px">
+    <div class="eyebrow"><span>PRD</span><span class="status">status: approved</span><span>terminal only</span><span>builds on scope.md</span></div>
+    <h1>My Mail Agent</h1>
+    <p class="lede prose">A terminal benchmark you run after every small change. It runs the real agents through fictional-university scenarios, traces every decision, and says whether the system got better and, if not, where it broke.</p>
+    <div class="expand"><span class="k">Scope → PRD</span>Scope said “score each layer and the whole run.” Now we know exactly what that means: three outcomes per scenario, strict success through the output check, and a global verdict against the previous run before any detail.</div>
+  </header>
+
+  <section aria-labelledby="journey">
+    <h2 id="journey">The core journey</h2>
+    <div class="diagram">
+      <svg viewBox="0 0 900 240" role="img" aria-labelledby="jt jd">
+        <title id="jt">Benchmark journey</title>
+        <desc id="jd">One atomic change, run the whole benchmark, scenarios go through the real pipeline with tracing, checks layer by layer, global verdict against the previous run, then component differences if worse, then the next change.</desc>
+        <defs>
+          <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="head" d="M0,0 L10,5 L0,10 z"/></marker>
+          <marker id="b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="head back" d="M0,0 L10,5 L0,10 z"/></marker>
+        </defs>
+        <g class="node"><rect x="10" y="40" width="130" height="80" rx="8"/><text class="t" x="75" y="74" text-anchor="middle">Atomic change</text><text class="s" x="75" y="94" text-anchor="middle">e.g. a system prompt</text></g>
+        <g class="node"><rect x="158" y="40" width="130" height="80" rx="8"/><text class="t" x="223" y="74" text-anchor="middle">Run all</text><text class="s" x="223" y="94" text-anchor="middle">fixed scenario set</text></g>
+        <g class="node hot"><rect x="306" y="40" width="130" height="80" rx="8"/><text class="t" x="371" y="74" text-anchor="middle">Pipeline</text><text class="s" x="371" y="94" text-anchor="middle">traced decisions</text></g>
+        <g class="node hot"><rect x="454" y="40" width="130" height="80" rx="8"/><text class="t" x="519" y="74" text-anchor="middle">Layer checks</text><text class="s" x="519" y="94" text-anchor="middle">in order → outcome</text></g>
+        <g class="node hot"><rect x="602" y="40" width="130" height="80" rx="8"/><text class="t" x="667" y="74" text-anchor="middle">Global verdict</text><text class="s" x="667" y="94" text-anchor="middle">vs previous run</text></g>
+        <g class="node"><rect x="750" y="40" width="140" height="80" rx="8"/><text class="t" x="820" y="74" text-anchor="middle">Component diff</text><text class="s" x="820" y="94" text-anchor="middle">only if worse</text></g>
+        <line class="edge" x1="142" y1="80" x2="154" y2="80" marker-end="url(#a)"/>
+        <line class="edge" x1="290" y1="80" x2="302" y2="80" marker-end="url(#a)"/>
+        <line class="edge" x1="438" y1="80" x2="450" y2="80" marker-end="url(#a)"/>
+        <line class="edge" x1="586" y1="80" x2="598" y2="80" marker-end="url(#a)"/>
+        <line class="edge" x1="734" y1="80" x2="746" y2="80" marker-end="url(#a)"/>
+        <text class="lbl" x="371" y="144" text-anchor="middle">router → writer · summarizer · ask user</text>
+        <path class="edge back" d="M820,122 V190 H75 V124" marker-end="url(#b)"/>
+        <text class="lbl back" x="450" y="214" text-anchor="middle">next change</text>
+      </svg>
+    </div>
+
+    <div class="steps" id="steps">
+      <div class="step-nav" role="group" aria-label="Journey steps"></div>
+      <div class="step-panel" aria-live="polite"><span class="n"></span><h3></h3><p></p></div>
+    </div>
+    <noscript>
+      <ol class="plain">
+        <li>Make one atomic change.</li><li>Run the whole benchmark.</li><li>Each scenario goes through the real pipeline, traced.</li>
+        <li>Each layer is checked in order: invalid, failed at a layer, or successful.</li><li>Global verdict against the previous run.</li>
+        <li>If worse, open component differences.</li><li>Make the next change.</li>
+      </ol>
+    </noscript>
+  </section>
+
+  <section aria-labelledby="outcomes">
+    <h2 id="outcomes">Run outcomes</h2>
+    <div class="outcomes">
+      <div class="oc inv"><span class="k">Invalid</span><p>The run broke and never reached an output. The trace shows the point where it broke.</p></div>
+      <div class="oc fl"><span class="k">Failed at layer X</span><p>It didn't break, but a check failed. The first failing layer is reported.</p></div>
+      <div class="oc ok"><span class="k">Successful</span><p>Every intermediate check passed in order, up to and including the output check.</p></div>
+    </div>
+  </section>
+
+  <section aria-labelledby="screen">
+    <h2 id="screen">The result screen</h2>
+    <p class="prose">Summary before detail. The verdict fits on one screen, and the component differences open on demand.</p>
+    <div class="term" role="figure" aria-label="Illustration of the result screen layout">
+      <div class="term-head"><span>benchmark result</span><span>layout illustration, not real numbers</span></div>
+<pre><span class="dim">global verdict  (this run vs previous)</span>
+  successful scenarios   <span class="bad">▼ worse</span>
+  invalid runs           no change
+
+<span class="dim">component differences  (open on demand)</span>
+  router        no change
+  writer        <span class="bad">▼ tone failures on professor recipients</span>
+  summarizer    no change
+  <span class="dim">→ open a scenario to read its trace step by step</span></pre>
+    </div>
+  </section>
+
+  <section aria-labelledby="features">
+    <h2 id="features">Features and behavior</h2>
+    <div class="features">
+      <details open><summary>Scenarios</summary><div>
+        <p>Each one has mailbox content, the user's request, the recipient's role, and an answer key for every layer.</p>
+        <ul class="checks"><li>Five kinds: reply, first sender, summarize, injected instruction, no matching mail.</li><li>Every scenario has an answer key per layer it passes through.</li><li>The set is fixed between runs.</li></ul>
+      </div></details>
+      <details><summary>Tracing</summary><div>
+        <ul class="checks"><li>Each decision's input and output is recorded in order: route, tool calls, facts, output.</li><li>Any scenario from any run can be reopened and read step by step.</li></ul>
+      </div></details>
+      <details><summary>Output check: replies and new mails</summary><div>
+        <ul class="checks">
+          <li>Correct tone for the recipient's role <span class="tag judge">LLM judge</span></li>
+          <li>Relevant to the request <span class="tag judge">LLM judge</span></li>
+          <li>Concise enough <span class="tag judge">LLM judge</span></li>
+          <li>No hallucinated information <span class="tag">answer key</span></li>
+          <li>Respects the user's instruction <span class="tag">answer key</span></li>
+          <li>Contains all necessary information <span class="tag">answer key</span></li>
+          <li>Greeting when required <span class="tag">answer key</span></li>
+        </ul>
+      </div></details>
+      <details><summary>Output check: summaries</summary><div>
+        <ul class="checks"><li>Key information the user didn't already have.</li><li>Urgent information that needs an immediate response.</li><li>No irrelevant information.</li><li>Under 50% of the original's word count.</li></ul>
+      </div></details>
+      <details><summary>Injected instructions</summary><div>
+        <ul class="checks"><li>Never followed.</li><li>Ignored or flagged to the user, so they can check where it came from and who sent it.</li></ul>
+      </div></details>
+      <details><summary>Missing information</summary><div>
+        <ul class="checks"><li>No matching mail or missing details: the system asks the user instead of guessing, both for summaries and for writing.</li></ul>
+      </div></details>
+      <details><summary>Language <span class="tag">added in spec</span></summary><div>
+        <ul class="checks"><li>A reply uses the language of the received mail.</li><li>A new mail uses the language the user specifies, or French by default.</li><li>Mail may arrive in French or English.</li></ul>
+      </div></details>
+      <details><summary>Drafts, never sends <span class="tag">added in spec</span></summary><div>
+        <ul class="checks"><li>The system only places a complete draft in the drafts folder. The user validates and sends it.</li></ul>
+      </div></details>
+      <details><summary>Tone profiles</summary><div>
+        <p>A default tone per recipient role. Every writing scenario names the role.</p>
+        <div class="roles"><span class="role">professor</span><span class="role">researcher</span><span class="role">student</span><span class="role">administration</span><span class="role new">friend · new in PRD</span></div>
+      </div></details>
+      <details><summary>Comparing runs</summary><div>
+        <ul class="checks"><li>Every run is saved for the next comparison.</li><li>The first run has nothing to compare with and becomes the baseline.</li><li>Global verdict first, then the per-component differences.</li></ul>
+      </div></details>
+    </div>
+    <div class="assume"><span class="k">Assumptions to confirm</span>
+      <p>“Better” means more successful scenarios than the previous run, with per-layer pass counts as tie-breakers.</p>
+      <p>Key, urgent and necessary information are written into each scenario's answer key so they can be checked.</p>
+    </div>
+  </section>
+
+  <section aria-labelledby="split">
+    <h2 id="split">Now, deferred, and not at all</h2>
+    <div class="two">
+      <div><h3>What we're building</h3><ul class="plain">
+        <li><strong>Fixed scenario set</strong> with per-layer answer keys.</li>
+        <li><strong>Real agents</strong> on a local model through every scenario.</li>
+        <li><strong>Tracing</strong> of every decision.</li>
+        <li><strong>Per-layer and output checks</strong> and the three outcomes.</li>
+        <li><strong>Saved runs</strong>, the global verdict, and component differences.</li>
+      </ul></div>
+      <div><h3>Deferred</h3><ul class="plain">
+        <li><strong>Central deployment</strong>: needs more thinking and time.</li>
+        <li><strong>Critic agent</strong>: the benchmark comes first.</li>
+        <li><strong>Runtime tool-call validator</strong>: the benchmark still checks tool calls.</li>
+        <li><strong>Memory</strong>: not thought through yet.</li>
+        <li><strong>Live Gmail and Microsoft MCPs</strong>: live mail isn't fixed between runs.</li>
+        <li><strong>A separate UI</strong> for summaries and drafts: switching from the terminal to the webmail is daunting (raised in spec).</li>
+      </ul></div>
+      <div><h3>Non-goals</h3><ul class="plain">
+        <li><strong>Any UI</strong>: it stays in the terminal.</li>
+        <li><strong>Guaranteeing it always works</strong>: this slice measures; it doesn't promise.</li>
+      </ul></div>
+      <div><h3>Open questions</h3><ul class="plain">
+        <li><strong>Size of the first scenario set</strong>: spec or build, keep it small.</li>
+        <li><strong>Keeping the LLM judge comparable</strong>: for 4-spec.</li>
+        <li><strong>Serving the fictional mailbox reproducibly</strong>: for 4-spec.</li>
+        <li><strong>Which role owns the agent</strong>: set per scenario.</li>
+      </ul></div>
+    </div>
+  </section>
+
+  <footer>Companion to devpost/prd.md. The Markdown file is the main copy.</footer>
+</main>
+
+<script>
+(() => {
+  const steps = [
+    ["Atomic change", "Make one small change, such as editing the drafter's system prompt, so any gain or loss traces back to it."],
+    ["Run all", "Run the whole fixed scenario set against the changed system."],
+    ["Pipeline", "Each scenario's request goes through planner/router → writer, summarizer, or a question back to the user. Every decision's input and output is traced."],
+    ["Layer checks", "Each layer is checked in order against the answer key. The scenario ends invalid, failed at a layer, or successful."],
+    ["Global verdict", "First thing on screen: is the new system better than the previous run?"],
+    ["Component diff", "If it isn't, open the per-component differences and find which component failed."],
+    ["Next change", "Make the next change and run again."]
+  ];
+  const root = document.getElementById("steps");
+  const nav = root.querySelector(".step-nav");
+  const panel = root.querySelector(".step-panel");
+  const show = i => {
+    nav.querySelectorAll("button").forEach((b, j) => b.setAttribute("aria-pressed", String(i === j)));
+    panel.querySelector(".n").textContent = `Step ${i + 1} of ${steps.length}`;
+    panel.querySelector("h3").textContent = steps[i][0];
+    panel.querySelector("p").textContent = steps[i][1];
+  };
+  steps.forEach(([t], i) => {
+    const b = document.createElement("button");
+    b.type = "button"; b.id = `step-${i + 1}`; b.textContent = `${i + 1} · ${t}`;
+    b.addEventListener("click", () => show(i));
+    nav.appendChild(b);
+  });
+  show(0);
+})();
+</script>
