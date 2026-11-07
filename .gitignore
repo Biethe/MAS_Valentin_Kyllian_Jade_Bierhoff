@@ -1,5 +1,5 @@
 # Personal learning context (kept out of commits by default)
-/devpost/learner-profile.md
+/devpost
 
 # Local credentials
 .env
@@ -9,3 +9,7 @@
 # Build output and benchmark runs (regenerated locally)
 /benchmark/target/
 /benchmark/runs/
+/agent
+/.claude
+/.agent
+skills-lock.json
