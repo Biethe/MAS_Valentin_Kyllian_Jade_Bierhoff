@@ -5,7 +5,7 @@ import com.assistant.mail.model.mail.Email;
 import com.assistant.mail.model.mail.EmailThread;
 import com.assistant.mail.model.output.Summary;
 import com.assistant.mail.service.LlmAgentClient;
-import com.assistant.mail.service.MailClientMcp;
+import com.assistant.mail.service.mcp.MailClientMcp;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;

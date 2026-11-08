@@ -1,19 +1,5 @@
-package com.assistant.mail.service;
-
-import java.util.List;
-
-import com.assistant.mail.model.fact.Information;
-import com.assistant.mail.model.mail.AttachmentFile;
-import com.assistant.mail.model.mail.Email;
-import com.assistant.mail.model.plan.Instruction;
-import com.assistant.mail.prompt.PlannerSystemPrompt;
+package com.assistant.mail.service.agent;
 
 public interface PlannerAgentClient {
-    List<Instruction> generateAtomicInstructions(PlannerSystemPrompt plannerSystemPrompt, String prompt, String userQuery);
-    String askUserForExtraInformation(PlannerSystemPrompt plannerSystemPrompt, String prompt);
-    List<Information> generateAtomicInformationFromMail(PlannerSystemPrompt plannerSystemPrompt, String prompt, Email email);
-    List<Information> generateAtomicInformationFromAttachment(PlannerSystemPrompt plannerSystemPrompt, String prompt, AttachmentFile attachmentFile);
-    String generateFinalInstructionForDrafter(PlannerSystemPrompt plannerSystemPrompt, String prompt, List<Information> information);
-    String generateFinalInstructionForSummarizer(PlannerSystemPrompt plannerSystemPrompt, String prompt, List<Information> information);
-    
+    String complete(String system, String user);
 }

@@ -7,6 +7,8 @@ public class Information {
     private String body;
     private InformationKind kind = InformationKind.INFORMATIVE;
     private Instant dueTime;
+    private Long sourceEmailId;
+    private String sourceFile;
 
     public Information() {}
 
@@ -24,6 +26,12 @@ public class Information {
 
     public Instant getDueTime() { return dueTime; }
     public void setDueTime(Instant dueTime) { this.dueTime = dueTime; }
+
+    public Long getSourceEmailId() { return sourceEmailId; }
+    public void setSourceEmailId(Long sourceEmailId) { this.sourceEmailId = sourceEmailId; }
+
+    public String getSourceFile() { return sourceFile; }
+    public void setSourceFile(String sourceFile) { this.sourceFile = sourceFile; }
 
     public boolean isUrgent() {
         return kind == InformationKind.REQUIRED_ACTION

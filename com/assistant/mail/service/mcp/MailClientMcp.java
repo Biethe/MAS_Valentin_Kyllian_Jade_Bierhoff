@@ -1,4 +1,4 @@
-package com.assistant.mail.service;
+package com.assistant.mail.service.mcp;
 
 import com.assistant.mail.model.mail.AttachmentFile;
 import com.assistant.mail.model.mail.Email;

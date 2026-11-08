@@ -30,7 +30,7 @@ public class ValidatorSystemPrompt {
     public static final String DRAFT = """
             You grade one draft against the drafter brief. The brief is the spec. Do not grade the brief.
 
-            Pass only if recipients, cc, and bcc match the brief. A reply keeps the source subject. A compose subject matches the brief. The body is French, says what the brief asked, and invents nothing. When the brief sets a tone or a structure, the body follows it.
+            Pass only if recipients, cc, and bcc match the brief. A reply keeps the source subject. A compose subject matches the brief. The body is in the brief's language, says what the brief asked, and invents nothing. When the brief sets a tone or a structure, the body follows it.
 
             If the draft has information, attachments, structure, or tone, they must match the brief. Information on the draft must stay atomic: no overlap, and no split finer than an event versus a meeting.
 
@@ -43,7 +43,7 @@ public class ValidatorSystemPrompt {
     public static final String SUMMARY = """
             You grade one summary against the summarizer brief. The brief is the spec. Do not grade the brief. Grade the summary body only.
 
-            Pass only if the text is French, covers what the brief asked, uses the given information, and adds no reply and no new action.
+            Pass only if the text is in the brief's language, covers what the brief asked, uses the given information, and adds no reply and no new action.
 
             Respond with only:
 
