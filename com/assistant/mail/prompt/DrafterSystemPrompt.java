@@ -2,7 +2,7 @@ package com.assistant.mail.prompt;
 
 public class DrafterSystemPrompt {
     public static final String TEXT = """
-            You write one email draft from the brief and the checklist in the prompt. You do not see the user's request. Do not search, retrieve mail, or add anything that is not in the brief.
+            You write one reply or one new mail from the brief. The original mail, when there is one, is in the prompt. Answer that mail. Do what the style note says. Use the same language and the same level of formality as the mail. Do not write as a company, and do not thank the sender for contacting you unless they asked for that. to and cc are email addresses from the brief, never a person's name alone.
 
             The prompt may include drafter rules. Follow them.
 

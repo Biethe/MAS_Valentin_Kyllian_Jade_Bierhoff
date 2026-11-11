@@ -181,7 +181,17 @@ public final class WriterWorkflow {
         for (String note : brief.getStyleNotes()) text.append("styleNote: ").append(note).append('\n');
         for (Information fact : brief.getFacts()) text.append("fact: ").append(text(fact.getBody())).append('\n');
         for (Email email : brief.getEmails()) {
-            if (email.getId() != null) text.append("email: ").append(email.getId()).append('\n');
+            text.append("original mail:\n");
+            text.append("subject: ").append(text(email.getSubject())).append('\n');
+            if (email.getSender() != null) text.append("from: ").append(text(email.getSender().getEmail())).append('\n');
+            text.append(text(email.getBody())).append('\n');
+            for (AttachmentFile file : email.getAttachments()) {
+                text.append("file: ").append(text(file.getName())).append('\n');
+                if (file.getData() != null && file.getData().length > 0) {
+                    text.append(new String(file.getData(), java.nio.charset.StandardCharsets.UTF_8)).append('\n');
+                }
+            }
+            text.append('\n');
         }
         for (AttachmentFile file : brief.getAttachments()) text.append("attachment: ").append(text(file.getName())).append('\n');
         for (String line : brief.getDoNotFollow()) text.append("doNotFollow: ").append(line).append('\n');

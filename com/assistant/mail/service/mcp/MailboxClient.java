@@ -194,12 +194,16 @@ public final class MailboxClient implements MailClientMcp, AutoCloseable {
     @Override
     public Long createDraft(List<String> to, List<String> cc, List<String> bcc, String subject, String body, Long inReplyTo) {
         Map<String, Object> args = new LinkedHashMap<>();
-        args.put("to", to == null ? List.of() : to);
-        args.put("cc", cc == null ? List.of() : cc);
-        args.put("bcc", bcc == null ? List.of() : bcc);
+        if (inReplyTo != null) {
+            String remote = serverIds.getOrDefault(inReplyTo, String.valueOf(inReplyTo));
+            if (outlook()) args.put("reply_to_id", remote);
+            else args.put("inReplyTo", remote);
+        }
+        args.put("to", addresses(to));
+        args.put("cc", addresses(cc));
+        args.put("bcc", addresses(bcc));
         args.put("subject", subject == null ? "" : subject);
         args.put("body", body == null ? "" : body);
-        if (inReplyTo != null) args.put("inReplyTo", serverIds.getOrDefault(inReplyTo, String.valueOf(inReplyTo)));
         JsonNode result = call(tools.draft, args);
         String draftId = text(result, "draftId", "id", "messageId", "draft_id");
         if (draftId.isBlank()) throw new IllegalArgumentException(result.toString());
@@ -225,6 +229,33 @@ public final class MailboxClient implements MailClientMcp, AutoCloseable {
         if (id == null) return "";
         String known = serverIds.get(id);
         return known == null ? Long.toString(id) : known;
+    }
+
+    private static List<String> addresses(List<String> values) {
+        List<String> out = new ArrayList<>();
+        if (values == null) return out;
+        for (String value : values) {
+            if (value != null && value.contains("@")) out.add(value.strip());
+        }
+        return out;
+    }
+
+    private static List<String> addressesOf(JsonNode node, String... keys) {
+        JsonNode found = find(node, keys);
+        List<String> out = new ArrayList<>();
+        if (found == null) return out;
+        if (found.isArray()) {
+            for (JsonNode item : found) addAddress(out, item);
+        } else {
+            addAddress(out, found);
+        }
+        return out;
+    }
+
+    private static void addAddress(List<String> out, JsonNode item) {
+        String address = text(item, "address", "email");
+        if (address.isBlank() && item.isTextual()) address = item.asString("");
+        if (address.contains("@")) out.add(address.strip());
     }
 
     private static String step(String name, Object shown) {
@@ -256,18 +287,20 @@ public final class MailboxClient implements MailClientMcp, AutoCloseable {
 
     private Email mail(JsonNode node, boolean snippet) {
         String serverId = text(node, "id", "messageId", "message_id", "email_id");
-        String threadId = text(node, "threadId", "thread_id");
+        String threadId = text(node, "threadId", "thread_id", "conversation_id");
         if (serverId.isBlank()) serverId = threadId;
         if (serverId.isBlank()) throw new IllegalArgumentException(node.toString());
         Email email = new Email();
         long id = localId(serverId);
         email.setId(id);
         if (!threadId.isBlank()) email.setThreadId(threadId);
-        String from = person(find(node, "from", "sender", "fromAddress"));
+        String from = text(node, "from_email", "sender_email");
+        if (from.isBlank()) from = person(find(node, "from", "sender", "fromAddress"));
         if (!from.isBlank()) email.setSender(new User(null, null, null, null, from));
-        email.setRecipients(people(find(node, "to", "recipients")));
+        email.setRecipients(addressesOf(node, "to_recipients", "toRecipients", "to"));
+        email.setCc(addressesOf(node, "cc_recipients", "ccRecipients", "cc"));
         email.setSubject(text(node, "subject"));
-        email.setReceived(text(node, "received", "receivedDateTime", "received_datetime", "received_at", "date", "sentDateTime"));
+        email.setReceived(text(node, "received", "receivedDateTime", "received_datetime", "local_timestamp", "received_at", "date", "sentDateTime"));
         email.setBody(bodyText(node, snippet));
         attach(email, node, serverId);
         return email;

@@ -10,6 +10,7 @@ public class Email {
     private String threadId;
     private User sender;
     private List<String> recipients = new ArrayList<>();
+    private List<String> cc = new ArrayList<>();
     private String subject;
     private String received;
     private String body;
@@ -27,6 +28,9 @@ public class Email {
 
     public List<String> getRecipients() { return recipients; }
     public void setRecipients(List<String> recipients) { this.recipients = recipients; }
+
+    public List<String> getCc() { return cc; }
+    public void setCc(List<String> cc) { this.cc = cc == null ? new ArrayList<>() : cc; }
 
     public String getSubject() { return subject; }
     public void setSubject(String subject) { this.subject = subject; }

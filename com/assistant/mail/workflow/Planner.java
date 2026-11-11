@@ -354,8 +354,8 @@ public class Planner {
                 briefPrompt(instruction, facts, selection, memory, language));
         Brief brief = new Brief();
         brief.setTask(instruction.getType());
-        brief.setTo(values(raw, "to"));
-        brief.setCc(values(raw, "cc"));
+        brief.setTo(onlyAddresses(values(raw, "to"), replyTo(selection)));
+        brief.setCc(onlyAddresses(values(raw, "cc"), replyCc(selection)));
         brief.setLanguage(language);
         brief.setRecipientRole(emptyToNull(field(raw, "recipientRole")));
         brief.setTone(enumValue(DraftTone.class, field(raw, "tone")));
@@ -369,6 +369,31 @@ public class Planner {
         brief.setContextFiles(selection.userFiles);
         brief.setEmails(selection.emails);
         return brief;
+    }
+
+    private static List<String> onlyAddresses(List<String> chosen, List<String> fallback) {
+        List<String> good = new ArrayList<>();
+        if (chosen != null) {
+            for (String value : chosen) {
+                if (value != null && value.contains("@")) good.add(value.strip());
+            }
+        }
+        return good.isEmpty() && fallback != null ? fallback : good;
+    }
+
+    private static List<String> replyTo(Selection selection) {
+        List<String> out = new ArrayList<>();
+        if (selection.emails.isEmpty()) return out;
+        Email email = selection.emails.get(0);
+        if (email.getSender() != null && email.getSender().getEmail() != null && email.getSender().getEmail().contains("@")) {
+            out.add(email.getSender().getEmail());
+        }
+        return out;
+    }
+
+    private static List<String> replyCc(Selection selection) {
+        if (selection.emails.isEmpty() || selection.emails.get(0).getCc() == null) return List.of();
+        return selection.emails.get(0).getCc();
     }
 
     private Checklist checklist(Brief brief) {
@@ -446,7 +471,16 @@ public class Planner {
         for (Email email : selection.emails) {
             prompt.append("id: ").append(email.getId())
                     .append("\nsubject: ").append(text(email.getSubject()))
-                    .append("\nto: ").append(email.getRecipients()).append("\n");
+                    .append("\nfrom: ").append(email.getSender() == null ? "" : text(email.getSender().getEmail()))
+                    .append("\nto: ").append(email.getRecipients())
+                    .append("\ncc: ").append(email.getCc())
+                    .append("\nmail:\n").append(text(email.getBody())).append('\n');
+            for (AttachmentFile file : email.getAttachments()) {
+                prompt.append("file: ").append(text(file.getName())).append('\n');
+                if (file.getData() != null && file.getData().length > 0) {
+                    prompt.append(new String(file.getData(), java.nio.charset.StandardCharsets.UTF_8)).append('\n');
+                }
+            }
         }
         prompt.append("rules:\n");
         for (MemoryRule rule : rulesFor(memory, instruction.getType())) {

@@ -127,7 +127,7 @@ public class PlannerSystemPrompt {
             Copy a fact only when the instruction needs it.
             A fact line may begin with its source, such as "mail 1" or "file notes.pdf". Copy the fact text after that source. Leave the source off your answer.
             A compose has no source mail. Fill recipients, tone, and the facts to include. Leave reply-to empty.
-            A reply fills recipients from the mail being answered, a tone, and the facts to include.
+            A reply answers the mail in the prompt. styleNote is one sentence: what the sender asked, and what the reply must do. Match that mail's language and how formal it is. to and cc are email addresses copied from the envelope, never display names. Do not invent an organization or a promise that is not in the facts.
             A summary leaves to, cc, bcc, recipientRole, tone, structure, and styleNote empty. Copy the facts the summary must mention.
 
             The prompt may include planner rules. Follow them.
