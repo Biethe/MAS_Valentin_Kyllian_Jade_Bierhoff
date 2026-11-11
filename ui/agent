@@ -1,0 +1,21 @@
+#!/bin/sh
+# Runs one agent turn for the UI. MAIL_MCP=university|gmail|outlook.
+cd "$(dirname "$0")/.."
+if [ ! -d benchmark/target/lib ]; then
+  (cd benchmark && mvn -q package) || exit 1
+fi
+mkdir -p ui/agent-classes
+find com -name '*.java' \
+  ! -name 'PlannerWorkflow.java' \
+  ! -name 'PlannerWorkflowCheck.java' \
+  ! -name 'ValidatorAgentClient.java' \
+  > ui/agent-classes/sources.txt
+javac --release 21 -encoding UTF-8 -cp "benchmark/target/classes:benchmark/target/lib/*" \
+  -d ui/agent-classes @ui/agent-classes/sources.txt || exit 1
+export MAIL_MCP="${MAIL_MCP:-university}"
+export SCENARIO="${SCENARIO:-benchmark/scenarios/reply-prof-01.json}"
+if [ "$MAIL_MCP" = "university" ]; then
+  export MAILBOX_CMD="${MAILBOX_CMD:-java -cp benchmark/target/classes:benchmark/target/lib/* com.assistant.mail.mailbox.MailboxServer $SCENARIO ui/tools.jsonl}"
+fi
+exec java -cp "ui/agent-classes:benchmark/target/classes:benchmark/target/lib/*" \
+  com.assistant.mail.workflow.UiServer

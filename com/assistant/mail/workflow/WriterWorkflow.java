@@ -12,6 +12,7 @@ import com.assistant.mail.model.memory.Dispute;
 import com.assistant.mail.model.memory.LongTermMemory;
 import com.assistant.mail.model.output.Draft;
 import com.assistant.mail.prompt.DrafterSystemPrompt;
+import com.assistant.mail.service.Progress;
 import com.assistant.mail.service.agent.DrafterAgentClient;
 import com.assistant.mail.service.mcp.MailClientMcp;
 
@@ -41,6 +42,7 @@ public final class WriterWorkflow {
     }
 
     public Result run(Brief brief, Checklist checklist) {
+        Progress.note("Writing the draft");
         String raw = call(DrafterSystemPrompt.TEXT, writePrompt(brief, checklist)).trim();
         mark(checklist, raw);
         List<Dispute> disputes = new ArrayList<>();

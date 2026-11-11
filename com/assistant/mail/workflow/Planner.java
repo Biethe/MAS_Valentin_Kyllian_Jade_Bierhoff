@@ -29,6 +29,7 @@ import com.assistant.mail.model.trace.TraceStep;
 import com.assistant.mail.prompt.PlannerSystemPrompt;
 import com.assistant.mail.service.mcp.MailClientMcp;
 import com.assistant.mail.service.agent.PlannerAgentClient;
+import com.assistant.mail.service.Progress;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -62,6 +63,13 @@ public class Planner {
         }
         LongTermMemory rules = memory == null ? new LongTermMemory() : memory;
         run.trace.setRequestText(request.getText());
+        String hello = greeting(request.getText());
+        if (hello != null) {
+            run.chats.add(hello);
+            run.instructions.add(new Instruction(request.getText(), InstructionType.CHAT, true, false));
+            return run;
+        }
+        Progress.note("Reading the request");
         String split = agent.complete(PlannerSystemPrompt.SPLIT, request.getText());
         for (Map<String, String> block : blocks(split)) {
             String body = block.getOrDefault("body", "").strip();
@@ -75,19 +83,32 @@ public class Planner {
 
     private void one(Run run, Request request, String body, LongTermMemory memory) {
         Instruction instruction = new Instruction(body, null, true, false);
+        Progress.note("Deciding what to do");
         String routed = agent.complete(PlannerSystemPrompt.ROUTE, routePrompt(body, memory));
         Map<String, String> route = first(blocks(routed));
         InstructionType type = enumValue(InstructionType.class, route.get("type"));
         boolean clear = "yes".equalsIgnoreCase(route.getOrDefault("clear", "").strip());
         instruction.setType(type);
         instruction.setIsClear(clear);
+        String now = MailIndex.current(request.getText());
+        boolean ordered = MailIndex.orderOf(body) != MailIndex.Order.NONE
+                || MailIndex.orderOf(now) != MailIndex.Order.NONE
+                || MailIndex.fileOfLastMail(now, request.getText());
+        if (ordered) {
+            if (type != InstructionType.REPLY && type != InstructionType.COMPOSE) type = InstructionType.SUMMARIZE;
+            clear = true;
+            instruction.setType(type);
+            instruction.setIsClear(true);
+        }
+        run.instructions.add(instruction);
         Language userLanguage = Languages.of(request.getText());
         if (type == InstructionType.OUTOFSCOPE) {
             run.refused.add(Languages.refusal(userLanguage));
             return;
         }
         if (type == InstructionType.CHAT) {
-            run.chats.add(text(agent.complete(PlannerSystemPrompt.ANSWER, "language: " + userLanguage + "\n" + body)));
+            run.chats.add(text(agent.complete(PlannerSystemPrompt.ANSWER,
+                    "language: " + userLanguage + "\n" + request.getText())));
             return;
         }
         if (type == null || !clear) {
@@ -95,9 +116,9 @@ public class Planner {
             return;
         }
 
-        Gather gather = open(body);
+        Gather gather = open(ordered && MailIndex.orderOf(body) == MailIndex.Order.NONE ? request.getText() : body);
         if (gather.blocked != null) {
-            run.questions.add(ask(QuestionReason.MISSING_FACT, gather.blocked, userLanguage));
+            run.chats.add(gather.blocked);
             return;
         }
         List<Email> emails = gather.emails;
@@ -107,12 +128,15 @@ public class Planner {
             run.questions.add(ask(QuestionReason.NO_MAIL, body, userLanguage));
             return;
         }
-        String located = agent.complete(PlannerSystemPrompt.LOCATE, locatePrompt(body, emails, threads, userFiles));
-        if (located == null || located.isBlank() || located.strip().equalsIgnoreCase("none")) {
+        String located = ordered ? null : agent.complete(PlannerSystemPrompt.LOCATE, locatePrompt(body, emails, threads, userFiles));
+        if (!ordered && (located == null || located.isBlank() || located.strip().equalsIgnoreCase("none")) && userFiles.isEmpty()) {
             run.questions.add(ask(QuestionReason.NO_MAIL, body, userLanguage));
             return;
         }
-        Selection selection = select(blocks(located), emails, threads, userFiles);
+        Selection selection = ordered ? taken(emails) : select(blocks(located == null ? "" : located), emails, threads, userFiles);
+        for (AttachmentFile file : userFiles) {
+            if (!selection.userFiles.contains(file)) selection.userFiles.add(file);
+        }
         if (selection.emails.isEmpty() && selection.files.isEmpty() && selection.userFiles.isEmpty()) {
             run.questions.add(ask(QuestionReason.NO_MAIL, body, userLanguage));
             return;
@@ -175,6 +199,26 @@ public class Planner {
 
     /** ponytail: four fetches, then stop. Raise the cap if search plus read needs more hops. */
     private Gather open(String body) {
+        MailIndex.Found ordered = MailIndex.order(mail, body);
+        if (ordered != null) {
+            List<Email> emails = ordered.email() == null ? List.of() : List.of(ordered.email());
+            return new Gather(emails, List.of(), ordered.blocked());
+        }
+        boolean meaning = !MailIndex.exact(body);
+        if (meaning) {
+            Email hit = MailIndex.nearest(mail, agent, body);
+            if (hit != null) return new Gather(List.of(hit), List.of(), null);
+        }
+        Gather keyword = fetch(body);
+        if (!keyword.emails.isEmpty()) return keyword;
+        if (!meaning) {
+            Email hit = MailIndex.nearest(mail, agent, body);
+            if (hit != null) return new Gather(List.of(hit), List.of(), null);
+        }
+        return keyword;
+    }
+
+    private Gather fetch(String body) {
         Set<String> mails = new LinkedHashSet<>();
         Set<String> threads = new LinkedHashSet<>();
         List<Email> emails = new ArrayList<>();
@@ -524,6 +568,16 @@ public class Planner {
                 .toString();
     }
 
+    private static Selection taken(List<Email> emails) {
+        Selection selection = new Selection();
+        for (Email email : emails) {
+            if (email == null || email.getId() == null || selection.emails.contains(email)) continue;
+            selection.emails.add(email);
+            selection.context.getEmailIds().add(email.getId());
+        }
+        return selection;
+    }
+
     private static Selection select(List<Map<String, String>> chosen, List<Email> emails,
                                     List<EmailThread> threads, List<AttachmentFile> userFiles) {
         Selection selection = new Selection();
@@ -735,6 +789,15 @@ public class Planner {
         return value.length() <= SNIPPET ? value : value.substring(0, SNIPPET);
     }
 
+    private static String greeting(String text) {
+        String word = text == null ? "" : text.strip().toLowerCase(java.util.Locale.ROOT).replaceAll("[!.?]", "");
+        return switch (word) {
+            case "hi", "hello", "hey" -> "Hello. Ask me about a mail.";
+            case "bonjour", "salut", "coucou" -> "Bonjour. Demandez-moi un mail.";
+            default -> null;
+        };
+    }
+
     private static String text(AttachmentFile file) {
         if (file.getData() == null) {
             return "";
@@ -777,6 +840,7 @@ public class Planner {
     }
 
     public static final class Run {
+        public final List<Instruction> instructions = new ArrayList<>();
         public final List<Question> questions = new ArrayList<>();
         public final List<String> refused = new ArrayList<>();
         public final List<String> chats = new ArrayList<>();

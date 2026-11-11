@@ -4,51 +4,105 @@ import com.assistant.mail.model.mail.AttachmentFile;
 import com.assistant.mail.model.mail.Email;
 import com.assistant.mail.model.mail.EmailThread;
 import com.assistant.mail.model.mail.User;
+import com.assistant.mail.service.Progress;
 import io.modelcontextprotocol.client.McpClient;
 import io.modelcontextprotocol.client.McpSyncClient;
+import io.modelcontextprotocol.client.transport.HttpClientStreamableHttpTransport;
 import io.modelcontextprotocol.client.transport.ServerParameters;
 import io.modelcontextprotocol.client.transport.StdioClientTransport;
 import io.modelcontextprotocol.json.McpJsonDefaults;
 import io.modelcontextprotocol.spec.McpSchema.CallToolRequest;
 import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
 import io.modelcontextprotocol.spec.McpSchema.TextContent;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Set;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
-/** Stdio client for {@code MailboxServer}. Starts it from {@code MAILBOX_CMD}. */
+/** Mailbox MCP client. {@code MAIL_MCP} selects university, gmail, or outlook. */
 public final class MailboxClient implements MailClientMcp, AutoCloseable {
     private static final JsonMapper JSON = JsonMapper.builder().build();
+    private static final String GMAIL_URL = "https://gmailmcp.googleapis.com";
 
     private final McpSyncClient client;
+    private final Tools tools;
+    private final Map<String, Long> locals = new HashMap<>();
     private final Map<Long, String> serverIds = new HashMap<>();
     private final Set<Long> unread = new HashSet<>();
+    private long nextId = 1;
 
-    private MailboxClient(McpSyncClient client) {
+    private MailboxClient(McpSyncClient client, Tools tools) {
         this.client = client;
+        this.tools = tools;
     }
 
     public static MailboxClient open() {
-        String cmd = System.getenv("MAILBOX_CMD");
-        if (cmd == null || cmd.isBlank()) throw new IllegalStateException("MAILBOX_CMD is not set");
+        String which = System.getenv().getOrDefault("MAIL_MCP", "university").strip().toLowerCase();
+        return switch (which) {
+            case "", "university" -> stdio(System.getenv("MAILBOX_CMD"), "MAILBOX_CMD is not set", Tools.UNIVERSITY);
+            case "gmail" -> gmail();
+            case "outlook" -> stdio(System.getenv("OUTLOOK_CMD"), "OUTLOOK_CMD is not set", Tools.outlook());
+            default -> throw new IllegalStateException("MAIL_MCP must be university, gmail, or outlook");
+        };
+    }
+
+    private static MailboxClient stdio(String cmd, String missing, Tools tools) {
+        if (cmd == null || cmd.isBlank()) throw new IllegalStateException(missing);
         StdioClientTransport transport = new StdioClientTransport(
                 ServerParameters.builder("sh").args("-c", cmd).build(), McpJsonDefaults.getMapper());
         McpSyncClient client = McpClient.sync(transport).requestTimeout(Duration.ofSeconds(30)).build();
         client.initialize();
-        return new MailboxClient(client);
+        return new MailboxClient(client, tools);
+    }
+
+    private static MailboxClient gmail() {
+        String token = GmailLogin.accessToken();
+        var transport = HttpClientStreamableHttpTransport.builder(GMAIL_URL)
+                .endpoint("/mcp/v1")
+                .jsonMapper(McpJsonDefaults.getMapper())
+                .httpRequestCustomizer((builder, method, uri, body, context) ->
+                        builder.header("Authorization", "Bearer " + token))
+                .build();
+        McpSyncClient client = McpClient.sync(transport).requestTimeout(Duration.ofSeconds(60)).build();
+        try {
+            client.initialize();
+        } catch (RuntimeException e) {
+            String detail = root(e);
+            if (detail.contains("404") || detail.contains("Server Not Found")) {
+                detail = detail + ". The Gmail MCP address was not found.";
+            }
+            try {
+                client.close();
+            } catch (RuntimeException ignored) {
+                // the init failure is the one to report
+            }
+            throw new IllegalStateException(detail, e);
+        }
+        return new MailboxClient(client, Tools.GMAIL);
+    }
+
+    private static String root(Throwable error) {
+        Throwable cursor = error;
+        while (cursor.getCause() != null) cursor = cursor.getCause();
+        String message = cursor.getMessage();
+        return message == null || message.isBlank() ? String.valueOf(error.getMessage()) : message;
     }
 
     @Override
     public void close() {
-        client.close();
+        if (client != null) client.close();
     }
 
     @Override
@@ -86,33 +140,46 @@ public final class MailboxClient implements MailClientMcp, AutoCloseable {
 
     @Override
     public List<Email> searchMail(String query) {
-        JsonNode hits = call("search_mail", Map.of("query", query == null ? "" : query));
+        String q = query == null ? "" : query;
+        JsonNode hits = outlook() && (q.equals("in:inbox") || q.equals("in:anywhere") || q.isBlank())
+                ? call("o365_list_mail", Map.of("folder", "inbox", "limit", 10))
+                : call(tools.search, Map.of("query", q));
         List<Email> emails = new ArrayList<>();
-        if (!hits.isArray()) return emails;
-        for (JsonNode hit : hits) {
+        for (JsonNode hit : nodes(hits)) {
             Email email = mail(hit, true);
-            email.setBody(hit.path("snippet").asString(""));
             if (email.getId() != null) unread.add(email.getId());
             emails.add(email);
+        }
+        if (emails.isEmpty() && ((hits.isArray() && !hits.isEmpty()) || (hits.isObject() && hits.size() > 0))) {
+            throw new IllegalArgumentException(hits.toString());
         }
         return emails;
     }
 
     @Override
     public Email readMail(String id) {
-        Email email = mail(call("read_mail", Map.of("id", serverId(id))), false);
+        Map<String, Object> args = outlook()
+                ? Map.of("email_id", serverId(id), "body_format", "text")
+                : Map.of("id", serverId(id));
+        JsonNode result = call(tools.read, args);
+        List<JsonNode> found = nodes(result);
+        Email email = mail(found.isEmpty() ? result : found.get(0), false);
         if (email.getId() != null) unread.remove(email.getId());
         return email;
     }
 
     @Override
     public EmailThread readThread(String threadId) {
-        JsonNode nodes = call("read_thread", Map.of("threadId", threadId == null ? "" : threadId));
+        String id = threadId == null ? "" : threadId;
+        Map<String, Object> args = tools.gmail ? Map.of("id", id) : Map.of("threadId", id);
+        JsonNode result = call(tools.thread, args);
         EmailThread thread = new EmailThread();
-        thread.setThreadId(threadId);
-        if (!nodes.isArray()) return thread;
-        for (JsonNode node : nodes) {
+        thread.setThreadId(id);
+        List<JsonNode> found = nodes(result);
+        if (found.isEmpty() && result.isObject() && result.size() > 0) throw new IllegalArgumentException(result.toString());
+        for (JsonNode node : found) {
             Email email = mail(node, false);
+            if (email.getThreadId() == null) email.setThreadId(id);
             if (email.getId() != null) unread.remove(email.getId());
             thread.getEmails().add(email);
         }
@@ -133,8 +200,14 @@ public final class MailboxClient implements MailClientMcp, AutoCloseable {
         args.put("subject", subject == null ? "" : subject);
         args.put("body", body == null ? "" : body);
         if (inReplyTo != null) args.put("inReplyTo", serverIds.getOrDefault(inReplyTo, String.valueOf(inReplyTo)));
-        JsonNode result = call("create_draft", args);
-        return localId(result.path("draftId").asString(""));
+        JsonNode result = call(tools.draft, args);
+        String draftId = text(result, "draftId", "id", "messageId", "draft_id");
+        if (draftId.isBlank()) throw new IllegalArgumentException(result.toString());
+        return localId(draftId);
+    }
+
+    private boolean outlook() {
+        return tools.search.startsWith("o365_");
     }
 
     private String serverId(String id) {
@@ -147,10 +220,33 @@ public final class MailboxClient implements MailClientMcp, AutoCloseable {
         }
     }
 
+    @Override
+    public String remoteId(Long id) {
+        if (id == null) return "";
+        String known = serverIds.get(id);
+        return known == null ? Long.toString(id) : known;
+    }
+
+    private static String step(String name, Object shown) {
+        String what = shown == null ? "" : shown.toString().strip();
+        String tool = name == null ? "" : name;
+        if (tool.contains("attachment")) return "Reading the attached file";
+        if (tool.contains("search")) return what.isEmpty() ? "Searching the mailbox" : "Searching: " + what;
+        if (tool.contains("draft")) return "Saving a draft";
+        if (tool.contains("thread")) return "Reading the thread";
+        if (tool.contains("read") || tool.contains("message") || tool.contains("mail")) return "Reading a mail";
+        return what.isEmpty() ? tool : tool + ": " + what;
+    }
+
     private JsonNode call(String name, Map<String, Object> args) {
+        Object shown = args.getOrDefault("query", args.getOrDefault("id", args.get("threadId")));
+        Progress.note(step(name, shown));
         CallToolResult result = client.callTool(new CallToolRequest(name, args));
         String text = result.content() == null || result.content().isEmpty() ? "" : ((TextContent) result.content().get(0)).text();
-        if (Boolean.TRUE.equals(result.isError())) throw new IllegalStateException(text);
+        if (Boolean.TRUE.equals(result.isError())) {
+            Progress.note(name + " failed: " + text);
+            throw new IllegalStateException(text);
+        }
         try {
             return JSON.readTree(text);
         } catch (RuntimeException e) {
@@ -159,50 +255,217 @@ public final class MailboxClient implements MailClientMcp, AutoCloseable {
     }
 
     private Email mail(JsonNode node, boolean snippet) {
+        String serverId = text(node, "id", "messageId", "message_id", "email_id");
+        String threadId = text(node, "threadId", "thread_id");
+        if (serverId.isBlank()) serverId = threadId;
+        if (serverId.isBlank()) throw new IllegalArgumentException(node.toString());
         Email email = new Email();
-        String serverId = node.path("id").asString("");
-        if (!serverId.isBlank()) {
-            long id = localId(serverId);
-            email.setId(id);
-            serverIds.put(id, serverId);
-        }
-        String threadId = node.path("threadId").asString("");
+        long id = localId(serverId);
+        email.setId(id);
         if (!threadId.isBlank()) email.setThreadId(threadId);
-        String from = node.path("from").asString("");
+        String from = person(find(node, "from", "sender", "fromAddress"));
         if (!from.isBlank()) email.setSender(new User(null, null, null, null, from));
-        email.setRecipients(strings(node.get("to")));
-        email.setSubject(node.path("subject").asString(""));
-        if (!snippet) email.setBody(node.path("body").asString(""));
-        if (node.path("attachments").isArray()) {
-            for (JsonNode file : node.path("attachments")) {
-                String name = file.path("name").asString("");
-                String text = file.path("text").asString("");
-                email.getAttachments().add(new AttachmentFile(name, "text/plain", text.getBytes(StandardCharsets.UTF_8)));
-            }
-        }
+        email.setRecipients(people(find(node, "to", "recipients")));
+        email.setSubject(text(node, "subject"));
+        email.setReceived(text(node, "received", "receivedDateTime", "received_datetime", "received_at", "date", "sentDateTime"));
+        email.setBody(bodyText(node, snippet));
+        attach(email, node, serverId);
         return email;
     }
 
-    // ponytail: digits of the server id ("m1" -> 1). Two ids that share digits would collide.
-    static long localId(String serverId) {
-        String digits = serverId == null ? "" : serverId.replaceAll("\\D+", "");
-        if (digits.isEmpty()) throw new IllegalArgumentException("id " + serverId);
-        return Long.parseLong(digits);
+    /** A fresh long for each server id. The real id is kept for the next call. */
+    private long localId(String serverId) {
+        if (serverId == null || serverId.isBlank()) throw new IllegalArgumentException("id " + serverId);
+        Long existing = locals.get(serverId);
+        if (existing != null) return existing;
+        long id = nextId++;
+        locals.put(serverId, id);
+        serverIds.put(id, serverId);
+        return id;
     }
 
-    private static List<String> strings(JsonNode node) {
-        List<String> values = new ArrayList<>();
-        if (node != null && node.isArray()) {
-            for (JsonNode item : node) values.add(item.asString());
+    static List<JsonNode> nodes(JsonNode node) {
+        List<JsonNode> found = new ArrayList<>();
+        collect(node, found, 0);
+        return found;
+    }
+
+    private static void collect(JsonNode node, List<JsonNode> found, int depth) {
+        if (node == null || node.isNull() || node.isMissingNode() || depth > 4) return;
+        if (node.isArray()) {
+            for (JsonNode item : node) collect(item, found, depth + 1);
+            return;
         }
-        return values;
+        if (!node.isObject()) return;
+        if (isMessage(node)) {
+            found.add(node);
+            return;
+        }
+        for (JsonNode child : node) collect(child, found, depth + 1);
+    }
+
+    private static boolean isMessage(JsonNode node) {
+        boolean id = !text(node, "id", "messageId", "message_id", "email_id", "threadId", "thread_id").isBlank();
+        boolean body = !text(node, "subject", "snippet", "body", "text").isBlank();
+        return id && body;
+    }
+
+    private static String text(JsonNode node, String... keys) {
+        JsonNode found = find(node, keys);
+        if (found == null || found.isNull() || found.isObject() || found.isArray()) return "";
+        return found.asString("");
+    }
+
+    private static JsonNode find(JsonNode node, String... keys) {
+        if (node == null || !node.isObject()) return null;
+        for (String key : keys) {
+            JsonNode value = node.get(key);
+            if (value != null && !value.isNull()) return value;
+        }
+        for (JsonNode child : node) {
+            if (!child.isObject()) continue;
+            for (String key : keys) {
+                JsonNode value = child.get(key);
+                if (value != null && !value.isNull()) return value;
+            }
+        }
+        return null;
+    }
+
+    private static String person(JsonNode node) {
+        if (node == null || node.isNull()) return "";
+        if (node.isTextual()) return node.asString();
+        String email = text(node, "email", "address");
+        if (!email.isBlank()) return email;
+        return text(node.path("emailAddress"), "address", "email");
+    }
+
+    private static String bodyText(JsonNode node, boolean snippet) {
+        String direct = snippet
+                ? text(node, "snippet", "body_preview", "preview", "body", "text")
+                : text(node, "body", "text", "plainText", "body_text", "snippet", "body_preview", "preview");
+        if (!direct.isBlank()) return direct;
+        JsonNode body = find(node, "body");
+        if (body != null && body.isObject()) return text(body, "content", "text");
+        return "";
+    }
+
+    private void attach(Email email, JsonNode node, String remoteId) {
+        JsonNode files = find(node, "attachments");
+        if (files == null || !files.isArray()) return;
+        for (JsonNode file : files) {
+            String name = text(file, "name", "filename");
+            String type = text(file, "content_type", "contentType", "mimeType");
+            if (type.isBlank()) type = "text/plain";
+            String content = text(file, "text", "content");
+            String attachmentId = text(file, "attachment_id", "attachmentId");
+            if (content.isBlank() && outlook() && !attachmentId.isBlank() && !remoteId.isBlank()) {
+                content = attachmentText(remoteId, attachmentId, name);
+            }
+            if (content.length() > 8000) content = content.substring(0, 8000);
+            email.getAttachments().add(new AttachmentFile(name, type, content.getBytes(StandardCharsets.UTF_8)));
+        }
+    }
+
+    private String attachmentText(String emailId, String attachmentId, String name) {
+        Progress.note("Reading the attached file" + (name.isBlank() ? "" : ": " + name));
+        try {
+            JsonNode peek = call("o365_peek_mail_attachment", Map.of(
+                    "email_id", emailId, "attachment_id", attachmentId, "render", false));
+            if (!"unsupported".equals(text(peek, "kind"))) {
+                String peeked = joinedText(peek);
+                if (!peeked.isBlank()) return peeked;
+            }
+        } catch (RuntimeException e) {
+            Progress.note("Could not preview " + name);
+        }
+        try {
+            JsonNode raw = call("o365_get_mail_attachment", Map.of(
+                    "email_id", emailId, "attachment_id", attachmentId, "delivery", "base64", "max_bytes", 200_000));
+            String encoded = text(raw, "content_base64");
+            if (encoded.isBlank()) return "";
+            byte[] bytes = Base64.getDecoder().decode(encoded);
+            if (!printable(bytes)) return "";
+            return new String(bytes, StandardCharsets.UTF_8);
+        } catch (RuntimeException e) {
+            return "";
+        }
+    }
+
+    private static String joinedText(JsonNode node) {
+        StringBuilder text = new StringBuilder();
+        collectText(node, text);
+        return text.toString().strip();
+    }
+
+    private static void collectText(JsonNode node, StringBuilder text) {
+        if (node == null || node.isNull()) return;
+        if (node.isObject()) {
+            JsonNode value = node.get("text");
+            if (value != null && value.isTextual() && !value.asString().isBlank()) {
+                if (text.length() > 0) text.append('\n');
+                text.append(value.asString().strip());
+            }
+            for (JsonNode child : node) collectText(child, text);
+            return;
+        }
+        if (node.isArray()) for (JsonNode child : node) collectText(child, text);
+    }
+
+    private static boolean printable(byte[] bytes) {
+        if (bytes.length == 0 || bytes.length > 200_000) return false;
+        int odd = 0;
+        for (byte value : bytes) {
+            int c = value & 0xff;
+            if (c == 0) return false;
+            if (c < 9 || (c > 13 && c < 32)) odd++;
+        }
+        return odd * 20 < bytes.length;
+    }
+
+    private static List<String> people(JsonNode node) {
+        if (node == null || node.isNull()) return List.of();
+        if (node.isArray()) {
+            List<String> values = new ArrayList<>();
+            for (JsonNode item : node) {
+                String person = person(item);
+                if (!person.isBlank()) values.add(person);
+            }
+            return values;
+        }
+        String person = person(node);
+        return person.isBlank() ? List.of() : List.of(person);
+    }
+
+    private record Tools(String search, String read, String thread, String draft, boolean gmail) {
+        private static final Tools UNIVERSITY = new Tools("search_mail", "read_mail", "read_thread", "create_draft", false);
+        private static final Tools GMAIL = new Tools("search_threads", "get_message", "get_thread", "create_draft", true);
+
+        private static Tools outlook() {
+            Path path = Path.of("outlook-tools.properties");
+            if (!Files.exists(path)) throw new IllegalStateException("outlook-tools.properties is missing");
+            Properties properties = new Properties();
+            try (InputStream in = Files.newInputStream(path)) {
+                properties.load(in);
+            } catch (Exception e) {
+                throw new IllegalStateException("unreadable " + path, e);
+            }
+            return new Tools(required(properties, "search"), required(properties, "read"),
+                    required(properties, "thread"), required(properties, "draft"), false);
+        }
+
+        private static String required(Properties properties, String key) {
+            String value = properties.getProperty(key, "").strip();
+            if (value.isBlank()) throw new IllegalStateException("outlook-tools.properties needs " + key);
+            return value;
+        }
     }
 
     public static void main(String[] args) {
         JsonNode node = JSON.readTree("""
                 {"id":"m1","threadId":"t1","from":"a@b.c","to":["c@d.e"],"subject":"RDV","body":"Bonjour","attachments":[{"name":"n.txt","text":"secret"}]}
                 """);
-        MailboxClient box = new MailboxClient(null);
+        MailboxClient box = new MailboxClient(null, Tools.UNIVERSITY);
         Email email = box.mail(node, false);
         assert email.getId() == 1L;
         assert "t1".equals(email.getThreadId());
@@ -212,7 +475,22 @@ public final class MailboxClient implements MailClientMcp, AutoCloseable {
         assert "n.txt".equals(email.getAttachments().get(0).getName());
         assert "secret".equals(new String(email.getAttachments().get(0).getData(), StandardCharsets.UTF_8));
         assert "m1".equals(box.serverIds.get(1L));
-        assert localId("d12") == 12L;
+        assert box.mail(node, false).getId() == 1L;
+
+        JsonNode nested = JSON.readTree("""
+                {"threads":[{"id":"18c2ab","threadId":"t9","subject":"Hi","snippet":"Hello","from":{"email":"a@b.c"},"to":[{"email":"c@d.e"}]}]}
+                """);
+        List<JsonNode> hits = nodes(nested);
+        assert hits.size() == 1;
+        Email hex = box.mail(hits.get(0), true);
+        assert hex.getId() == 2L;
+        assert "18c2ab".equals(box.serverIds.get(2L));
+        assert "Hello".equals(hex.getBody());
+        assert "a@b.c".equals(hex.getSender().getEmail());
+        assert List.of("c@d.e").equals(hex.getRecipients());
+        assert Tools.GMAIL.search.equals("search_threads");
+        assert Tools.GMAIL.draft.equals("create_draft");
+        GmailLogin.mainCheck();
         System.out.println("MailboxClient ok");
     }
 }

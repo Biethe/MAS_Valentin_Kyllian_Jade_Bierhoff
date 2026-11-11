@@ -23,6 +23,9 @@ public interface MailClientMcp {
     /** True when {@code id} was only a search snippet. */
     default boolean unread(Long id) { return false; }
 
+    /** Mailbox id that stays stable across runs. Falls back to the local id. */
+    default String remoteId(Long id) { return id == null ? "" : Long.toString(id); }
+
     /** Places one draft in the drafts folder. It is never sent. A compose passes no inReplyTo. */
     Long createDraft(List<String> to, List<String> cc, List<String> bcc, String subject, String body, Long inReplyTo);
 }

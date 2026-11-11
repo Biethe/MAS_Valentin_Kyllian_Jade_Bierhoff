@@ -11,6 +11,7 @@ public class Email {
     private User sender;
     private List<String> recipients = new ArrayList<>();
     private String subject;
+    private String received;
     private String body;
     private List<Information> information = new ArrayList<>();
     private List<AttachmentFile> attachments = new ArrayList<>();
@@ -29,6 +30,9 @@ public class Email {
 
     public String getSubject() { return subject; }
     public void setSubject(String subject) { this.subject = subject; }
+
+    public String getReceived() { return received; }
+    public void setReceived(String received) { this.received = received; }
 
     public String getBody() { return body; }
     public void setBody(String body) { this.body = body; }

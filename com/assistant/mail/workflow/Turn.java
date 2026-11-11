@@ -5,9 +5,11 @@ import com.assistant.mail.model.ask.QuestionReason;
 import com.assistant.mail.model.ask.Request;
 import com.assistant.mail.model.brief.Brief;
 import com.assistant.mail.model.brief.Checklist;
+import com.assistant.mail.model.memory.Dispute;
 import com.assistant.mail.model.memory.LongTermMemory;
 import com.assistant.mail.model.output.Draft;
 import com.assistant.mail.model.output.Summary;
+import com.assistant.mail.model.plan.Instruction;
 import com.assistant.mail.model.plan.InstructionType;
 
 import java.util.ArrayList;
@@ -28,6 +30,8 @@ public final class Turn {
     public Outcome run(Request request, LongTermMemory memory) {
         Planner.Run planned = planner.run(request, memory);
         Outcome outcome = new Outcome();
+        outcome.instructions.addAll(planned.instructions);
+        outcome.briefs.addAll(planned.briefs);
         outcome.questions.addAll(planned.questions);
         outcome.refused.addAll(planned.refused);
         outcome.chats.addAll(planned.chats);
@@ -41,13 +45,17 @@ public final class Turn {
             } else {
                 WriterWorkflow.Result result = writer.run(brief, checklist);
                 if (result.getBlocked() != null) {
-                    outcome.questions.add(new Question(result.getBlocked(), QuestionReason.MISSING_FACT, List.of()));
+                    String why = result.getBlocked();
+                    if (why.startsWith("rejected create_draft")) why = "I need a recipient before I can save a draft.";
+                    outcome.questions.add(new Question(why, QuestionReason.MISSING_FACT, List.of()));
                 } else {
                     outcome.drafts.add(result.getDraft());
+                    outcome.replyTo.add(brief.getReplyToId());
                     outcome.progress.add(ChecklistProgress.apply(checklist, scored(result.getDraft(), brief)));
                 }
             }
         }
+        for (Dispute dispute : planned.disputes.getDisputes()) PlannerMemory.remember(memory, dispute);
         return outcome;
     }
 
@@ -62,10 +70,13 @@ public final class Turn {
     }
 
     public static final class Outcome {
+        public final List<Instruction> instructions = new ArrayList<>();
+        public final List<Brief> briefs = new ArrayList<>();
         public final List<Question> questions = new ArrayList<>();
         public final List<String> refused = new ArrayList<>();
         public final List<String> chats = new ArrayList<>();
         public final List<Draft> drafts = new ArrayList<>();
+        public final List<Long> replyTo = new ArrayList<>();
         public final List<Summary> summaries = new ArrayList<>();
         public final List<String> progress = new ArrayList<>();
     }

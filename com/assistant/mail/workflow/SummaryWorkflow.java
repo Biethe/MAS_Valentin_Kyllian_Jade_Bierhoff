@@ -12,6 +12,7 @@ import com.assistant.mail.model.memory.Dispute;
 import com.assistant.mail.model.memory.LongTermMemory;
 import com.assistant.mail.model.output.Summary;
 import com.assistant.mail.prompt.SummarizerSystemPrompt;
+import com.assistant.mail.service.Progress;
 import com.assistant.mail.service.agent.SummarizerAgentClient;
 
 import java.util.ArrayList;
@@ -37,6 +38,7 @@ public final class SummaryWorkflow {
     }
 
     public Result run(Brief brief, Checklist checklist) {
+        Progress.note("Writing the summary");
         String body = call(SummarizerSystemPrompt.TEXT, writePrompt(brief, checklist)).trim();
         mark(checklist, body);
         List<Dispute> disputes = new ArrayList<>();
@@ -147,7 +149,26 @@ public final class SummaryWorkflow {
         for (String note : brief.getStyleNotes()) text.append("styleNote: ").append(note).append('\n');
         for (Information fact : brief.getFacts()) text.append("fact: ").append(text(fact.getBody())).append('\n');
         for (Email email : brief.getEmails()) {
-            if (email.getId() != null) text.append("email: ").append(email.getId()).append('\n');
+            text.append("mail:\n");
+            text.append("subject: ").append(text(email.getSubject())).append('\n');
+            if (email.getReceived() != null && !email.getReceived().isBlank()) {
+                text.append("received: ").append(text(email.getReceived())).append('\n');
+            }
+            if (email.getSender() != null) text.append("from: ").append(text(email.getSender().getEmail())).append('\n');
+            text.append(text(email.getBody())).append('\n');
+            for (AttachmentFile file : email.getAttachments()) {
+                text.append("file: ").append(text(file.getName())).append('\n');
+                if (file.getData() != null && file.getData().length > 0) {
+                    text.append(new String(file.getData(), java.nio.charset.StandardCharsets.UTF_8)).append('\n');
+                }
+            }
+            text.append('\n');
+        }
+        for (AttachmentFile file : brief.getContextFiles()) {
+            text.append("file: ").append(text(file.getName())).append('\n');
+            if (file.getData() != null && file.getData().length > 0) {
+                text.append(new String(file.getData(), java.nio.charset.StandardCharsets.UTF_8)).append("\n\n");
+            }
         }
         for (AttachmentFile file : brief.getAttachments()) text.append("attachment: ").append(text(file.getName())).append('\n');
         for (String line : brief.getDoNotFollow()) text.append("doNotFollow: ").append(line).append('\n');

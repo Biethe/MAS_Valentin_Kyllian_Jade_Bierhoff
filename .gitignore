@@ -5,8 +5,16 @@
 .env
 .env.*
 !.env.example
+gmail-token.json
 
 # Build output and benchmark runs (regenerated locally)
 /benchmark/target/
 /benchmark/runs/
+/ui/node_modules/
+/ui/dist/
+/ui/agent-classes/
+/ui/tools.jsonl
+/memory.json
+/mail-index.jsonl
+/.venv/
 
