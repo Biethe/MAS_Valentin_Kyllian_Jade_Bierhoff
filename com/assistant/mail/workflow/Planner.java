@@ -18,7 +18,6 @@ import com.assistant.mail.model.mail.EmailThread;
 import com.assistant.mail.model.memory.AgentKind;
 import com.assistant.mail.model.memory.Dispute;
 import com.assistant.mail.model.memory.LongTermMemory;
-import com.assistant.mail.model.memory.MemoryOrigin;
 import com.assistant.mail.model.memory.MemoryRule;
 import com.assistant.mail.model.memory.ShortTermMemory;
 import com.assistant.mail.model.plan.Context;
@@ -38,8 +37,6 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.BiFunction;
-import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -57,12 +54,6 @@ public class Planner {
     }
 
     public Run run(Request request, LongTermMemory memory) {
-        return run(request, memory, (text, brief) -> List.of(), dispute -> false);
-    }
-
-    public Run run(Request request, LongTermMemory memory,
-                   BiFunction<String, Brief, List<Dispute>> gaps,
-                   Predicate<Dispute> criticRight) {
         Run run = new Run();
         if (request == null || request.getText() == null || request.getText().isBlank()) {
             return run;
@@ -75,14 +66,12 @@ public class Planner {
             if (body.isEmpty()) {
                 continue;
             }
-            one(run, request, body, rules, gaps, criticRight);
+            one(run, request, body, rules);
         }
         return run;
     }
 
-    private void one(Run run, Request request, String body, LongTermMemory memory,
-                     BiFunction<String, Brief, List<Dispute>> gaps,
-                     Predicate<Dispute> criticRight) {
+    private void one(Run run, Request request, String body, LongTermMemory memory) {
         Instruction instruction = new Instruction(body, null, true, false);
         String routed = agent.complete(PlannerSystemPrompt.ROUTE, routePrompt(body, memory));
         Map<String, String> route = first(blocks(routed));
@@ -131,30 +120,36 @@ public class Planner {
 
         String mailBody = selection.emails.isEmpty() ? "" : text(selection.emails.get(0).getBody());
         Language language = Languages.output(instruction.getType(), instruction.getBody(), userLanguage, mailBody);
-        Brief brief = brief(instruction, facts, selection, memory, "", language);
-        for (Dispute dispute : gaps.apply(request.getText(), brief)) {
+        Brief brief = brief(instruction, facts, selection, memory, language);
+        brief.setAttachments(selection.files);
+        for (Map<String, String> gap : blocks(agent.complete(PlannerSystemPrompt.CRITIC, criticPrompt(instruction, brief, facts)))) {
+            BriefPart part = enumValue(BriefPart.class, gap.get("part"));
+            String argument = text(gap.get("argument"));
+            if (part == null || argument.isEmpty()) {
+                continue;
+            }
+            Dispute dispute = new Dispute();
             dispute.setAgent(AgentKind.PLANNER);
             dispute.setTask(instruction.getType());
-            dispute.setAgentArgument(field(agent.complete(PlannerSystemPrompt.ARGUMENT, argumentPrompt(dispute, brief, facts)), "argument"));
-            dispute.setCriticRight(criticRight.test(dispute));
+            dispute.setPart(part);
+            dispute.setCriticArgument(argument);
+            dispute.setCorrection(text(gap.get("instead")));
+            String value = text(gap.get("value"));
+            dispute.setAgentArgument(field(agent.complete(PlannerSystemPrompt.ARGUMENT, argumentPrompt(dispute, value, brief, facts)), "argument"));
+            boolean criticWins = "critic".equalsIgnoreCase(field(agent.complete(PlannerSystemPrompt.JUDGE, judgePrompt(instruction, dispute, value, brief, facts)), "winner"));
+            dispute.setCriticRight(criticWins);
+            if (criticWins) {
+                apply(brief, part, value, dispute.getCorrection(), facts);
+            }
+            dispute.setLesson(lesson(agent.complete(PlannerSystemPrompt.LESSON, lessonPrompt(dispute, userLanguage))));
             run.disputes.getDisputes().add(dispute);
             TraceStep step = new TraceStep();
             step.setAt(Instant.now());
             step.setActor(TraceActor.PICKER);
             step.setAction("criticRight");
-            step.setDetail(String.valueOf(Boolean.TRUE.equals(dispute.getCriticRight())));
+            step.setDetail(String.valueOf(criticWins));
             run.trace.getSteps().add(step);
-            if (Boolean.TRUE.equals(dispute.getCriticRight())) {
-                String lesson = lesson(agent.complete(PlannerSystemPrompt.LESSON, lessonPrompt(dispute, userLanguage)));
-                dispute.setLesson(lesson);
-                if (!lesson.isEmpty()) {
-                    memory.getRules().add(rule(instruction.getType(), dispute, lesson));
-                }
-                brief = brief(instruction, facts, selection, memory, dispute.getCriticArgument(), language);
-            }
         }
-        brief.setEmails(selection.emails);
-        brief.setAttachments(selection.files);
         run.briefs.add(brief);
 
         Checklist checklist = checklist(brief);
@@ -190,9 +185,9 @@ public class Planner {
     }
 
     private Brief brief(Instruction instruction, List<Information> facts, Selection selection,
-                        LongTermMemory memory, String correction, Language language) {
+                        LongTermMemory memory, Language language) {
         String raw = agent.complete(PlannerSystemPrompt.BRIEF,
-                briefPrompt(instruction, facts, selection, memory, correction, language));
+                briefPrompt(instruction, facts, selection, memory, language));
         Brief brief = new Brief();
         brief.setTask(instruction.getType());
         brief.setTo(values(raw, "to"));
@@ -243,17 +238,6 @@ public class Planner {
         return PlannerMemory.forPlanner(memory, task);
     }
 
-    private static MemoryRule rule(InstructionType task, Dispute dispute, String lesson) {
-        MemoryRule rule = new MemoryRule();
-        rule.setText(lesson);
-        rule.setAgent(AgentKind.PLANNER);
-        rule.setTask(task);
-        rule.setPart(dispute.getPart());
-        rule.setOrigin(MemoryOrigin.CRITIC);
-        rule.setReason(dispute.getCriticArgument());
-        return rule;
-    }
-
     private static String routePrompt(String body, LongTermMemory memory) {
         StringBuilder prompt = new StringBuilder("instruction:\n").append(body).append("\nrules:\n");
         for (MemoryRule rule : rulesFor(memory, null)) {
@@ -289,13 +273,11 @@ public class Planner {
     }
 
     private static String briefPrompt(Instruction instruction, List<Information> facts, Selection selection,
-                                      LongTermMemory memory, String correction, Language language) {
+                                      LongTermMemory memory, Language language) {
         StringBuilder prompt = new StringBuilder("language: ").append(language)
                 .append("\ninstruction:\n").append(instruction.getBody())
                 .append("\ntype: ").append(instruction.getType()).append("\nfacts:\n");
-        for (Information fact : facts) {
-            prompt.append("- ").append(stamped(fact)).append('\n');
-        }
+        prompt.append(factsText(facts));
         prompt.append("envelope:\n");
         for (Email email : selection.emails) {
             prompt.append("id: ").append(email.getId())
@@ -306,23 +288,107 @@ public class Planner {
         for (MemoryRule rule : rulesFor(memory, instruction.getType())) {
             prompt.append("- ").append(rule.getText()).append('\n');
         }
-        if (correction != null && !correction.isBlank()) {
-            prompt.append("correction:\n").append(correction).append('\n');
-        }
         return prompt.toString();
     }
 
-    private static String argumentPrompt(Dispute dispute, Brief brief, List<Information> facts) {
-        StringBuilder prompt = new StringBuilder("gap:\n").append(text(dispute.getCriticArgument())).append("\nfacts:\n");
-        for (Information fact : facts) {
-            prompt.append("- ").append(stamped(fact)).append('\n');
-        }
-        prompt.append("brief:\n").append(briefText(brief));
-        return prompt.toString();
+    private static String criticPrompt(Instruction instruction, Brief brief, List<Information> facts) {
+        return "instruction:\n" + instruction.getBody() + "\n\nfacts:\n" + factsText(facts) + "brief:\n" + briefText(brief);
+    }
+
+    private static String argumentPrompt(Dispute dispute, String value, Brief brief, List<Information> facts) {
+        return "part:\n" + dispute.getPart()
+                + "\nvalue:\n" + value
+                + "\nargument:\n" + text(dispute.getCriticArgument())
+                + "\nfacts:\n" + factsText(facts)
+                + "brief:\n" + briefText(brief);
+    }
+
+    private static String judgePrompt(Instruction instruction, Dispute dispute, String value, Brief brief, List<Information> facts) {
+        return "instruction:\n" + instruction.getBody()
+                + "\n\npart:\n" + dispute.getPart()
+                + "\n\nvalue:\n" + value
+                + "\n\ninstead:\n" + text(dispute.getCorrection())
+                + "\n\ncritic:\n" + text(dispute.getCriticArgument())
+                + "\n\nplanner:\n" + text(dispute.getAgentArgument())
+                + "\n\nfacts:\n" + factsText(facts)
+                + "brief:\n" + briefText(brief);
     }
 
     private static String lessonPrompt(Dispute dispute, Language language) {
-        return "language: " + language + "\ngap:\n" + text(dispute.getCriticArgument()) + "\nanswer:\n" + text(dispute.getAgentArgument());
+        String winner = Boolean.TRUE.equals(dispute.getCriticRight()) ? "critic" : "planner";
+        return "language: " + language
+                + "\nwinner:\n" + winner
+                + "\npart:\n" + dispute.getPart()
+                + "\nargument:\n" + text(dispute.getCriticArgument())
+                + "\nanswer:\n" + text(dispute.getAgentArgument());
+    }
+
+    private static String factsText(List<Information> facts) {
+        StringBuilder text = new StringBuilder();
+        for (Information fact : facts) {
+            text.append("- ").append(stamped(fact)).append('\n');
+        }
+        return text.toString();
+    }
+
+    /** Drop or replace one brief value. Attachment, file, and mail picks can only be dropped: a name is not a file. */
+    private static void apply(Brief brief, BriefPart part, String value, String instead, List<Information> facts) {
+        String next = text(instead);
+        switch (part) {
+            case FACT -> {
+                int index = indexOf(brief.getFacts(), value);
+                if (index < 0) {
+                    return;
+                }
+                if (next.isEmpty()) {
+                    brief.getFacts().remove(index);
+                } else {
+                    brief.getFacts().set(index, matchFacts(List.of(next), facts).get(0));
+                }
+            }
+            case TO -> swap(brief.getTo(), value, next);
+            case CC -> swap(brief.getCc(), value, next);
+            case BCC -> swap(brief.getBcc(), value, next);
+            case STYLE_NOTE -> swap(brief.getStyleNotes(), value, next);
+            case DO_NOT_FOLLOW -> swap(brief.getDoNotFollow(), value, next);
+            case LANGUAGE -> brief.setLanguage(next.isEmpty() ? null : enumValue(Language.class, next));
+            case TONE -> brief.setTone(next.isEmpty() ? null : enumValue(DraftTone.class, next));
+            case STRUCTURE -> brief.setStructure(next.isEmpty() ? null : enumValue(DraftStructure.class, next));
+            case TASK -> brief.setTask(next.isEmpty() ? null : enumValue(InstructionType.class, next));
+            case RECIPIENT_ROLE -> brief.setRecipientRole(next.isEmpty() ? null : next);
+            case REPLY_TO -> brief.setReplyToId(next.isEmpty() ? null : longValue(next));
+            case ATTACHMENT -> {
+                // ponytail: a replacement name has no bytes; drop only. Add the file when the critic can point at one.
+                if (next.isEmpty()) brief.getAttachments().removeIf(file -> value.equals(file.getName()));
+            }
+            case CONTEXT_FILE -> {
+                if (next.isEmpty()) brief.getContextFiles().removeIf(file -> value.equals(file.getName()));
+            }
+            case EMAIL -> {
+                if (next.isEmpty()) brief.getEmails().removeIf(email -> value.equals(String.valueOf(email.getId())));
+            }
+        }
+    }
+
+    private static int indexOf(List<Information> facts, String value) {
+        for (int i = 0; i < facts.size(); i++) {
+            if (value.equals(facts.get(i).getBody())) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private static void swap(List<String> values, String value, String instead) {
+        int index = values.indexOf(value);
+        if (index < 0) {
+            return;
+        }
+        if (instead.isEmpty()) {
+            values.remove(index);
+        } else {
+            values.set(index, instead);
+        }
     }
 
     private static String briefText(Brief brief) {

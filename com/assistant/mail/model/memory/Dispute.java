@@ -9,6 +9,7 @@ public class Dispute {
     private BriefPart part;
     private String criticArgument = "";
     private String agentArgument = "";
+    private String correction = "";
     private Boolean criticRight;
     private String lesson = "";
 
@@ -31,6 +32,11 @@ public class Dispute {
     public String getAgentArgument() { return agentArgument; }
     public void setAgentArgument(String agentArgument) {
         this.agentArgument = agentArgument == null ? "" : agentArgument;
+    }
+
+    public String getCorrection() { return correction; }
+    public void setCorrection(String correction) {
+        this.correction = correction == null ? "" : correction;
     }
 
     public Boolean getCriticRight() { return criticRight; }

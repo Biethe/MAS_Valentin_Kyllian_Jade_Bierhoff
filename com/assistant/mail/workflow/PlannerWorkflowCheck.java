@@ -3,7 +3,6 @@ package com.assistant.mail.workflow;
 import com.assistant.mail.model.ask.QuestionReason;
 import com.assistant.mail.model.ask.Request;
 import com.assistant.mail.model.brief.Brief;
-import com.assistant.mail.model.brief.BriefPart;
 import com.assistant.mail.model.mail.AttachmentFile;
 import com.assistant.mail.model.mail.Email;
 import com.assistant.mail.model.mail.EmailThread;
@@ -33,6 +32,7 @@ public final class PlannerWorkflowCheck {
         email.setBody("Réunion vendredi à 10h.\nSECRET_BODY");
 
         List<String> calls = new ArrayList<>();
+        int[] judges = {0};
         PlannerAgentClient model = (system, user) -> {
             calls.add(system + "\n" + user);
             if (system.equals(PlannerSystemPrompt.SPLIT)) {
@@ -68,10 +68,6 @@ public final class PlannerWorkflowCheck {
                         """;
             }
             if (system.equals(PlannerSystemPrompt.BRIEF)) {
-                String fact = user.contains("correction:") ? "" : """
-                        fact:
-                        Apporter le contrat
-                        """;
                 return """
                         to:
                         ada@u.test
@@ -81,9 +77,30 @@ public final class PlannerWorkflowCheck {
 
                         fact:
                         Réunion vendredi à 10h.
-                        """ + fact;
+
+                        fact:
+                        Apporter le contrat
+                        """;
+            }
+            if (system.equals(PlannerSystemPrompt.CRITIC)) {
+                return """
+                        part:
+                        FACT
+
+                        value:
+                        Apporter le contrat
+
+                        argument:
+                        Ce fait n'a pas été lu.
+
+                        instead:
+                        """;
             }
             if (system.equals(PlannerSystemPrompt.ARGUMENT)) return "argument:\naucun fait lu ne porte le contrat";
+            if (system.equals(PlannerSystemPrompt.JUDGE)) {
+                judges[0]++;
+                return judges[0] == 1 ? "winner:\ncritic" : "winner:\nplanner";
+            }
             if (system.equals(PlannerSystemPrompt.LESSON)) return "lesson:\nNe retiens un fait que s'il est dans un document lu.";
             if (system.equals(PlannerSystemPrompt.CHECKLIST)) {
                 return """
@@ -115,14 +132,7 @@ public final class PlannerWorkflowCheck {
         LongTermMemory memory = seeded();
         int before = memory.getRules().size();
         Planner planner = new Planner(mail, model);
-        Planner.Run result = planner.run(new Request("Réponds à Ada. Écris mon essai.", List.of()), memory,
-                (text, brief) -> {
-                    Dispute gap = new Dispute();
-                    gap.setPart(BriefPart.FACT);
-                    gap.setCriticArgument("Apporter le contrat");
-                    return List.of(gap);
-                },
-                dispute -> true);
+        Planner.Run result = planner.run(new Request("Réponds à Ada. Écris mon essai.", List.of()), memory);
 
         assert result.questions.size() == 2;
         assert result.questions.get(0).getReason() == QuestionReason.UNCLEAR;
@@ -152,6 +162,13 @@ public final class PlannerWorkflowCheck {
         assert unclear.contains("language: FR");
         String lesson = calls.stream().filter(call -> call.startsWith(PlannerSystemPrompt.LESSON)).findFirst().orElseThrow();
         assert lesson.contains("language: FR");
+        assert lesson.contains("winner:\ncritic");
+        String critic = calls.stream().filter(call -> call.startsWith(PlannerSystemPrompt.CRITIC)).findFirst().orElseThrow();
+        assert critic.contains("Réponds à Ada pour confirmer la réunion");
+        assert critic.contains("Apporter le contrat");
+        String judge = calls.stream().filter(call -> call.startsWith(PlannerSystemPrompt.JUDGE)).findFirst().orElseThrow();
+        assert judge.contains("Ce fait n'a pas été lu.");
+        assert judge.contains("aucun fait lu ne porte le contrat");
         assert Languages.explicit("Écris-lui in English") == com.assistant.mail.model.brief.Language.EN;
         assert Languages.explicit("Réponds en français") == com.assistant.mail.model.brief.Language.FR;
         assert Languages.output(com.assistant.mail.model.plan.InstructionType.COMPOSE, "Écris à Ada", com.assistant.mail.model.brief.Language.FR, "Please send the form") == com.assistant.mail.model.brief.Language.FR;
@@ -165,24 +182,26 @@ public final class PlannerWorkflowCheck {
         assert route.contains("summarize-rule");
         assert !route.contains("vetoed-rule");
 
+        assert memory.getRules().size() == before;
+        assert result.disputes.getDisputes().size() == 1;
+        Dispute dispute = result.disputes.getDisputes().get(0);
+        assert Boolean.TRUE.equals(dispute.getCriticRight());
+        assert dispute.getLesson().equals("Ne retiens un fait que s'il est dans un document lu.");
+        PlannerMemory.remember(memory, dispute);
         assert memory.getRules().size() == before + 1;
         MemoryRule added = memory.getRules().get(memory.getRules().size() - 1);
         assert added.getOrigin() == MemoryOrigin.CRITIC;
         assert added.getAgent() == AgentKind.PLANNER;
         assert added.getText().equals("Ne retiens un fait que s'il est dans un document lu.");
-        assert result.disputes.getDisputes().size() == 1;
         assert result.trace.getSteps().stream().anyMatch(step -> step.getActor() == TraceActor.PICKER && "true".equals(step.getDetail()));
 
         LongTermMemory kept = seeded();
         int keptBefore = kept.getRules().size();
-        planner.run(new Request("Réponds à Ada. Écris mon essai.", List.of()), kept,
-                (text, ignored) -> {
-                    Dispute gap = new Dispute();
-                    gap.setCriticArgument("Apporter le contrat");
-                    return List.of(gap);
-                },
-                dispute -> false);
+        Planner.Run keptRun = planner.run(new Request("Réponds à Ada. Écris mon essai.", List.of()), kept);
         assert kept.getRules().size() == keptBefore;
+        assert keptRun.briefs.get(0).getFacts().size() == 2;
+        assert keptRun.briefs.get(0).getFacts().stream().anyMatch(fact -> "Apporter le contrat".equals(fact.getBody()));
+        assert Boolean.FALSE.equals(keptRun.disputes.getDisputes().get(0).getCriticRight());
     }
 
     private static LongTermMemory seeded() {

@@ -61,6 +61,12 @@ public class PlannerSystemPrompt {
     public static final String READ = """
             You extract atomic information from one document. The prompt contains one instruction and that document (a mail body or one attachment). Do not search further.
 
+            Extract atomic information units, each expressing exactly one independent semantic assertion, relation, or event.
+            
+            Allow multiple subjects, objects, and qualifiers (e.g., time, location, participants) when they contribute to the same assertion or event.
+            
+            Ensure each unit is concise, self-contained, relevant to the user's intention, and preserves the source's original meaning, uncertainty, and context.
+
             Keep a fact only when the instruction needs it. Ignore the rest. Sender, cc, and subject are the envelope, not information.
 
             Split composite facts. An event and a meeting are two facts. Do not split a meeting into its hour, place, and title.
@@ -128,11 +134,31 @@ public class PlannerSystemPrompt {
             <one line>
             """;
 
-    public static final String ARGUMENT = """
-            You answer one critic gap about your brief. You do not open the mailbox.
+    public static final String CRITIC = """
+            You review one brief against the instruction and the facts the planner extracted. Do not open the mailbox. Do not rewrite the brief.
 
-            The prompt has the gap, the brief, and the facts you already extracted.
-            If an extracted fact backs the brief, quote that fact. If none does, say so.
+            Agree by saying nothing. For each part you reject, argue and name the replacement. Leave instead empty to drop that value.
+
+            Respond with one block per disagreement, and nothing else:
+
+            part:
+            TASK|TO|CC|BCC|LANGUAGE|RECIPIENT_ROLE|TONE|STRUCTURE|STYLE_NOTE|FACT|ATTACHMENT|CONTEXT_FILE|EMAIL|REPLY_TO|DO_NOT_FOLLOW
+
+            value:
+            <what the brief has>
+
+            argument:
+            <why that value is wrong for this instruction>
+
+            instead:
+            <the replacement, or empty>
+            """;
+
+    public static final String ARGUMENT = """
+            You defend one brief part the critic rejected. You do not open the mailbox.
+
+            The prompt names the part, the value you chose, the critic's argument, the brief, and the facts you already extracted.
+            If an extracted fact backs the value, quote that fact. If none does, say so.
 
             Respond with nothing else:
 
@@ -140,8 +166,21 @@ public class PlannerSystemPrompt {
             <one answer>
             """;
 
+    public static final String JUDGE = """
+            You pick one side of one disagreement. You see the instruction, the brief, the extracted facts, and both arguments. You do not open the mailbox. You do not rewrite.
+
+            Pick the side that fits the instruction.
+
+            Respond with nothing else:
+
+            winner:
+            critic|planner
+            """;
+
     public static final String LESSON = """
-            You write one lesson the planner must follow next time. The critic was right about the gap.
+            You write one lesson the planner must follow next time. The prompt names who won.
+
+            If the critic won, write the rule that stops the planner repeating this. If the planner won, write the rule that keeps this choice.
 
             One line, in the language the prompt names. The user will read it and may veto it. No greeting and no list.
 

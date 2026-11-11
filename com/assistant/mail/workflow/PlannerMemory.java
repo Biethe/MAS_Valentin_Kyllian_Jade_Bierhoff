@@ -28,9 +28,9 @@ public final class PlannerMemory {
                 .toList();
     }
 
-    /** A rule is written only when the picker sides with the critic. */
+    /** A rule is written when the caller keeps a lesson. A veto is not calling this. */
     public static void remember(LongTermMemory memory, Dispute dispute) {
-        if (memory == null || dispute == null || !Boolean.TRUE.equals(dispute.getCriticRight())) return;
+        if (memory == null || dispute == null) return;
         if (dispute.getLesson() == null || dispute.getLesson().isBlank()) return;
         MemoryRule rule = new MemoryRule();
         rule.setText(dispute.getLesson().trim());
@@ -69,12 +69,19 @@ public final class PlannerMemory {
         assert route.size() == LIMIT;
         assert route.get(0).getText().equals("summarize-rule");
 
+        int before = memory.getRules().size();
+        Dispute blank = new Dispute();
+        blank.setCriticRight(true);
+        blank.setLesson(" ");
+        remember(memory, blank);
+        assert memory.getRules().size() == before;
+
         Dispute kept = new Dispute();
         kept.setCriticRight(false);
-        kept.setLesson("do not store this");
+        kept.setLesson("keep the meeting fact");
         kept.setTask(InstructionType.REPLY);
         remember(memory, kept);
-        assert memory.getRules().size() == rules.size();
+        assert memory.getRules().size() == before + 1;
 
         Dispute lost = new Dispute();
         lost.setCriticRight(true);
