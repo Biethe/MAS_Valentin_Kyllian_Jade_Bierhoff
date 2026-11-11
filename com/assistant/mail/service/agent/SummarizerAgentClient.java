@@ -1,7 +1,5 @@
-package com.assistant.mail.service;
+package com.assistant.mail.service.agent;
 
-import com.assistant.mail.model.output.Summary;
-import com.assistant.mail.prompt.SummarizerSystemPrompt;
 public interface SummarizerAgentClient {
-    String generateFinalSummary(SummarizerSystemPrompt summarizerSystemPrompt, String prompt);
+    String complete(String system, String user);
 }

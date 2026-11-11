@@ -4,5 +4,6 @@ public enum InstructionType {
     REPLY,
     COMPOSE,
     SUMMARIZE,
+    CHAT,
     OUTOFSCOPE,
 }

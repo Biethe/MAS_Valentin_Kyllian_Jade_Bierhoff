@@ -18,9 +18,23 @@ public final class PlannerMemory {
 
     /** Planner rules for one task. A null task keeps every task, for the route call. */
     public static List<MemoryRule> forPlanner(LongTermMemory memory, InstructionType task) {
+        return select(memory, AgentKind.PLANNER, task);
+    }
+
+    /** Summarizer rules for one task. A null task keeps every task. Vetoed rules are skipped. */
+    public static List<MemoryRule> forSummarizer(LongTermMemory memory, InstructionType task) {
+        return select(memory, AgentKind.SUMMARIZER, task);
+    }
+
+    /** Drafter rules for one task. A null task keeps every task. Vetoed rules are skipped. */
+    public static List<MemoryRule> forDrafter(LongTermMemory memory, InstructionType task) {
+        return select(memory, AgentKind.DRAFTER, task);
+    }
+
+    private static List<MemoryRule> select(LongTermMemory memory, AgentKind agent, InstructionType task) {
         if (memory == null || memory.getRules() == null) return List.of();
         return memory.getRules().stream()
-                .filter(rule -> rule.getAgent() == AgentKind.PLANNER)
+                .filter(rule -> rule.getAgent() == agent)
                 .filter(rule -> !Boolean.TRUE.equals(rule.getVetoed()))
                 .filter(rule -> task == null || rule.getTask() == null || rule.getTask() == task)
                 .sorted(Comparator.comparingInt((MemoryRule rule) -> rule.getHelpful() - rule.getHarmful()).reversed())
@@ -28,17 +42,22 @@ public final class PlannerMemory {
                 .toList();
     }
 
-    /** A rule is written when the caller keeps a lesson. A veto is not calling this. */
+    /** Stores the lesson. A vetoed rule is kept and is not retrieved. */
     public static void remember(LongTermMemory memory, Dispute dispute) {
+        remember(memory, dispute, false);
+    }
+
+    public static void remember(LongTermMemory memory, Dispute dispute, boolean vetoed) {
         if (memory == null || dispute == null) return;
         if (dispute.getLesson() == null || dispute.getLesson().isBlank()) return;
         MemoryRule rule = new MemoryRule();
         rule.setText(dispute.getLesson().trim());
-        rule.setAgent(AgentKind.PLANNER);
+        rule.setAgent(dispute.getAgent() == null ? AgentKind.PLANNER : dispute.getAgent());
         rule.setTask(dispute.getTask());
         rule.setPart(dispute.getPart());
         rule.setOrigin(MemoryOrigin.CRITIC);
         rule.setReason(dispute.getCriticArgument());
+        rule.setVetoed(vetoed);
         memory.getRules().add(rule);
     }
 

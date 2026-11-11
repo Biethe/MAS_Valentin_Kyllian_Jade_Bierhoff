@@ -37,6 +37,13 @@ public final class Languages {
         return null;
     }
 
+    /** Fixed sentence. No model call. */
+    public static String refusal(Language language) {
+        return language == Language.EN
+                ? "That is outside what I can do. I handle mail, or a plain question."
+                : "Je ne peux pas faire ça. Je m'occupe du courrier, ou d'une question simple.";
+    }
+
     public static Language output(InstructionType type, String instruction, Language user, String mailBody) {
         if (type == InstructionType.REPLY) return of(mailBody);
         if (type == InstructionType.COMPOSE) {

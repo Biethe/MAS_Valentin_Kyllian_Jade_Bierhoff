@@ -56,6 +56,11 @@ public final class PlannerWorkflowCheck {
                 if (user.contains("Zoe")) return "type:\nSUMMARIZE\n\nclear:\nyes";
                 return "type:\nREPLY\n\nclear:\nyes";
             }
+            if (system.equals(PlannerSystemPrompt.TOOLS)) {
+                if (user.contains("email:")) return "done:\nyes";
+                if (user.contains("Zoe")) return "name:\nsearch_mail\n\nquery:\nZoe";
+                return "name:\nsearch_mail\n\nquery:\nAda";
+            }
             if (system.equals(PlannerSystemPrompt.ASK_USER)) return "Quelle réunion ?";
             if (system.equals(PlannerSystemPrompt.LOCATE)) return "email:\n1";
             if (system.equals(PlannerSystemPrompt.READ)) {
@@ -127,6 +132,9 @@ public final class PlannerWorkflowCheck {
             public List<EmailThread> retrieveRelevantThreads(String query) { return List.of(); }
             public List<AttachmentFile> retrieveAttachments(Email ignored) { return List.of(); }
             public List<AttachmentFile> retrieveAttachments(EmailThread ignored) { return List.of(); }
+            public Long createDraft(List<String> to, List<String> cc, List<String> bcc, String subject, String body, Long inReplyTo) {
+                return null;
+            }
         };
 
         LongTermMemory memory = seeded();
@@ -134,6 +142,9 @@ public final class PlannerWorkflowCheck {
         Planner planner = new Planner(mail, model);
         Planner.Run result = planner.run(new Request("Réponds à Ada. Écris mon essai.", List.of()), memory);
 
+        assert result.refused.size() == 1;
+        assert result.refused.get(0).contains("courrier");
+        assert result.chats.isEmpty();
         assert result.questions.size() == 2;
         assert result.questions.get(0).getReason() == QuestionReason.UNCLEAR;
         assert result.questions.get(1).getReason() == QuestionReason.NO_MAIL;
@@ -202,6 +213,44 @@ public final class PlannerWorkflowCheck {
         assert keptRun.briefs.get(0).getFacts().size() == 2;
         assert keptRun.briefs.get(0).getFacts().stream().anyMatch(fact -> "Apporter le contrat".equals(fact.getBody()));
         assert Boolean.FALSE.equals(keptRun.disputes.getDisputes().get(0).getCriticRight());
+
+        List<String> chatCalls = new ArrayList<>();
+        MailClientMcp boom = new MailClientMcp() {
+            public List<Email> retrieveRelevantEmails(String query) { throw new AssertionError(query); }
+            public List<EmailThread> retrieveRelevantThreads(String query) { throw new AssertionError(query); }
+            public List<AttachmentFile> retrieveAttachments(Email ignored) { throw new AssertionError(ignored); }
+            public List<AttachmentFile> retrieveAttachments(EmailThread ignored) { throw new AssertionError(ignored); }
+            public Long createDraft(List<String> to, List<String> cc, List<String> bcc, String subject, String body, Long inReplyTo) {
+                throw new AssertionError(subject);
+            }
+        };
+        PlannerAgentClient chatModel = (system, user) -> {
+            chatCalls.add(system);
+            if (system.equals(PlannerSystemPrompt.SPLIT)) return "body:\nBonjour";
+            if (system.equals(PlannerSystemPrompt.ROUTE)) return "type:\nCHAT\n\nclear:\nyes";
+            if (system.equals(PlannerSystemPrompt.ANSWER)) return "Bonjour.";
+            throw new AssertionError(system);
+        };
+        Planner.Run chat = new Planner(boom, chatModel).run(new Request("Bonjour", List.of()), new LongTermMemory());
+        assert chat.chats.equals(List.of("Bonjour."));
+        assert chat.briefs.isEmpty();
+        assert chat.questions.isEmpty();
+        assert !chatCalls.contains(PlannerSystemPrompt.TOOLS);
+
+        List<String> blockedCalls = new ArrayList<>();
+        PlannerAgentClient blockedModel = (system, user) -> {
+            blockedCalls.add(system);
+            if (system.equals(PlannerSystemPrompt.SPLIT)) return "body:\nRéponds à Ada";
+            if (system.equals(PlannerSystemPrompt.ROUTE)) return "type:\nREPLY\n\nclear:\nyes";
+            if (system.equals(PlannerSystemPrompt.TOOLS)) return "name:\nsend";
+            if (system.equals(PlannerSystemPrompt.ASK_USER)) return "Je ne peux pas envoyer.";
+            throw new AssertionError(system);
+        };
+        Planner.Run blocked = new Planner(mail, blockedModel).run(new Request("Réponds à Ada", List.of()), new LongTermMemory());
+        assert blocked.questions.size() == 1;
+        assert blocked.questions.get(0).getReason() == QuestionReason.MISSING_FACT;
+        assert blocked.briefs.isEmpty();
+        assert blockedCalls.stream().filter(call -> call.equals(PlannerSystemPrompt.TOOLS)).count() == 2;
     }
 
     private static LongTermMemory seeded() {

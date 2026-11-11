@@ -19,8 +19,9 @@ public class PlannerSystemPrompt {
     public static final String ROUTE = """
             You route one instruction. Do not read mail or attachments.
 
-            Set type to REPLY, COMPOSE, SUMMARIZE, or OUTOFSCOPE.
-            OUTOFSCOPE means the instruction is not about the mailbox. Refuse it.
+            Set type to REPLY, COMPOSE, SUMMARIZE, CHAT, or OUTOFSCOPE.
+            CHAT is a greeting, small talk, or a general question. It is not about the mailbox and it is not a request to write or run code.
+            OUTOFSCOPE means writing or running code, or anything that is neither mail nor a plain question.
             Set clear to yes only when the instruction can be carried out without asking what it means.
 
             The prompt may include planner rules. Follow them.
@@ -28,10 +29,39 @@ public class PlannerSystemPrompt {
             Respond with nothing else:
 
             type:
-            REPLY|COMPOSE|SUMMARIZE|OUTOFSCOPE
+            REPLY|COMPOSE|SUMMARIZE|CHAT|OUTOFSCOPE
 
             clear:
             yes|no
+            """;
+
+    public static final String ANSWER = """
+            You answer one greeting or one general question. You do not read mail, draft, or write code.
+
+            Answer in the language the prompt names. A few sentences.
+            """;
+
+    public static final String TOOLS = """
+            You fetch the mail one instruction needs. You do not extract facts and you do not write.
+
+            Reply with one block per call. Reply with done when the hits are enough.
+            A hit marked unread has no body yet: call read_mail on its id before done.
+            read_mail and read_thread use only ids already listed under hits. Do not call create_draft.
+
+            name:
+            search_mail|read_mail|read_thread
+
+            query:
+            <for search_mail>
+
+            id:
+            <for read_mail>
+
+            threadId:
+            <for read_thread>
+
+            done:
+            yes
             """;
 
     public static final String ASK_USER = """

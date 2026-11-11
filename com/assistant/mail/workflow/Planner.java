@@ -35,8 +35,10 @@ import java.time.Instant;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -79,17 +81,27 @@ public class Planner {
         boolean clear = "yes".equalsIgnoreCase(route.getOrDefault("clear", "").strip());
         instruction.setType(type);
         instruction.setIsClear(clear);
+        Language userLanguage = Languages.of(request.getText());
         if (type == InstructionType.OUTOFSCOPE) {
+            run.refused.add(Languages.refusal(userLanguage));
             return;
         }
-        Language userLanguage = Languages.of(request.getText());
+        if (type == InstructionType.CHAT) {
+            run.chats.add(text(agent.complete(PlannerSystemPrompt.ANSWER, "language: " + userLanguage + "\n" + body)));
+            return;
+        }
         if (type == null || !clear) {
             run.questions.add(ask(QuestionReason.UNCLEAR, body, userLanguage));
             return;
         }
 
-        List<Email> emails = mail.retrieveRelevantEmails(body);
-        List<EmailThread> threads = mail.retrieveRelevantThreads(body);
+        Gather gather = open(body);
+        if (gather.blocked != null) {
+            run.questions.add(ask(QuestionReason.MISSING_FACT, gather.blocked, userLanguage));
+            return;
+        }
+        List<Email> emails = gather.emails;
+        List<EmailThread> threads = gather.threads;
         List<AttachmentFile> userFiles = request.getFiles() == null ? List.of() : request.getFiles();
         if (emails.isEmpty() && threads.isEmpty() && userFiles.isEmpty()) {
             run.questions.add(ask(QuestionReason.NO_MAIL, body, userLanguage));
@@ -159,6 +171,114 @@ public class Planner {
                 run.questions.add(ask(QuestionReason.MISSING_FACT, item.getPart() + " missing from the brief", userLanguage));
             }
         }
+    }
+
+    /** ponytail: four fetches, then stop. Raise the cap if search plus read needs more hops. */
+    private Gather open(String body) {
+        Set<String> mails = new LinkedHashSet<>();
+        Set<String> threads = new LinkedHashSet<>();
+        List<Email> emails = new ArrayList<>();
+        List<EmailThread> found = new ArrayList<>();
+        String rejection = "";
+        int rejects = 0;
+        for (int step = 0; step < 4; step++) {
+            String raw = agent.complete(PlannerSystemPrompt.TOOLS, toolPrompt(body, emails, rejection));
+            List<ToolGate.Call> calls = toolCalls(raw);
+            if (calls.isEmpty()) break;
+            int emailCount = emails.size();
+            int threadCount = found.size();
+            StringBuilder bad = new StringBuilder();
+            for (ToolGate.Call call : calls) {
+                String why = ToolGate.deny(call, mails, threads, null, false);
+                if (why != null) {
+                    bad.append(why).append('\n');
+                    continue;
+                }
+                String failed = runCall(call, mails, threads, emails, found);
+                if (failed != null) bad.append(failed).append('\n');
+            }
+            if (!bad.isEmpty()) {
+                if (++rejects > 1) return new Gather(emails, found, bad.toString().strip());
+                rejection = bad.toString().strip();
+            } else if (emails.size() == emailCount && found.size() == threadCount) {
+                break;
+            } else {
+                rejection = "";
+            }
+        }
+        return new Gather(emails, found, null);
+    }
+
+    private String runCall(ToolGate.Call call, Set<String> mails, Set<String> threads, List<Email> emails, List<EmailThread> found) {
+        try {
+            switch (call.name()) {
+                case "search_mail" -> {
+                    List<Email> hits = mail.searchMail(call.query());
+                    if (hits != null) for (Email email : hits) note(email, mails, threads, emails);
+                    return null;
+                }
+                case "read_mail" -> {
+                    Email email = mail.readMail(call.id());
+                    if (email == null) return "rejected read_mail: empty result";
+                    note(email, mails, threads, emails);
+                    return null;
+                }
+                case "read_thread" -> {
+                    EmailThread thread = mail.readThread(call.threadId());
+                    if (thread == null || thread.getEmails() == null || thread.getEmails().isEmpty()) {
+                        return "rejected read_thread: empty result";
+                    }
+                    if (thread.getThreadId() != null) threads.add(thread.getThreadId());
+                    if (found.stream().noneMatch(item -> thread.getThreadId() != null && thread.getThreadId().equals(item.getThreadId()))) {
+                        found.add(thread);
+                    }
+                    for (Email email : thread.getEmails()) note(email, mails, threads, emails);
+                    return null;
+                }
+                default -> {
+                    return "rejected " + call.name() + ": unknown tool";
+                }
+            }
+        } catch (RuntimeException e) {
+            return "rejected " + call.name() + ": " + e.getMessage();
+        }
+    }
+
+    private static void note(Email email, Set<String> mails, Set<String> threads, List<Email> emails) {
+        if (email == null) return;
+        if (email.getId() != null) mails.add(String.valueOf(email.getId()));
+        if (email.getThreadId() != null && !email.getThreadId().isBlank()) threads.add(email.getThreadId());
+        for (int i = 0; i < emails.size(); i++) {
+            if (email.getId() != null && email.getId().equals(emails.get(i).getId())) {
+                emails.set(i, email);
+                return;
+            }
+        }
+        emails.add(email);
+    }
+
+    private String toolPrompt(String body, List<Email> emails, String rejection) {
+        StringBuilder prompt = new StringBuilder("instruction:\n").append(body).append("\nhits:\n");
+        for (Email email : emails) {
+            prompt.append("email: ").append(email.getId())
+                    .append("\nsubject: ").append(text(email.getSubject()))
+                    .append("\nsnippet: ").append(snippet(email.getBody()));
+            if (email.getThreadId() != null) prompt.append("\nthread: ").append(email.getThreadId());
+            if (mail.unread(email.getId())) prompt.append("\nunread: yes");
+            prompt.append("\n\n");
+        }
+        if (!rejection.isEmpty()) prompt.append("rejected:\n").append(rejection).append('\n');
+        return prompt.toString();
+    }
+
+    private static List<ToolGate.Call> toolCalls(String raw) {
+        List<ToolGate.Call> calls = new ArrayList<>();
+        for (Map<String, String> block : blocks(raw)) {
+            String name = text(block.get("name"));
+            if (name.isEmpty()) continue;
+            calls.add(ToolGate.read(name, text(block.get("query")), text(block.get("id")), text(block.get("threadId"))));
+        }
+        return calls;
     }
 
     private List<Information> read(String instruction, String document, Long sourceEmailId, String sourceFile) {
@@ -637,6 +757,18 @@ public class Planner {
         return text.isEmpty() ? null : text;
     }
 
+    private static final class Gather {
+        private final List<Email> emails;
+        private final List<EmailThread> threads;
+        private final String blocked;
+
+        private Gather(List<Email> emails, List<EmailThread> threads, String blocked) {
+            this.emails = emails;
+            this.threads = threads;
+            this.blocked = blocked;
+        }
+    }
+
     private static final class Selection {
         private final Context context = new Context();
         private final List<Email> emails = new ArrayList<>();
@@ -646,6 +778,8 @@ public class Planner {
 
     public static final class Run {
         public final List<Question> questions = new ArrayList<>();
+        public final List<String> refused = new ArrayList<>();
+        public final List<String> chats = new ArrayList<>();
         public final List<Brief> briefs = new ArrayList<>();
         public final List<Checklist> checklists = new ArrayList<>();
         public final List<Context> contexts = new ArrayList<>();

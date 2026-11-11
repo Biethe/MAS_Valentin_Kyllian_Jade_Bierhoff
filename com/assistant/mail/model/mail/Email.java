@@ -7,6 +7,7 @@ import java.util.List;
 
 public class Email {
     private Long id;
+    private String threadId;
     private User sender;
     private List<String> recipients = new ArrayList<>();
     private String subject;
@@ -16,6 +17,9 @@ public class Email {
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
+
+    public String getThreadId() { return threadId; }
+    public void setThreadId(String threadId) { this.threadId = threadId; }
 
     public User getSender() { return sender; }
     public void setSender(User sender) { this.sender = sender; }
