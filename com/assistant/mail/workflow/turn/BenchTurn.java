@@ -1,4 +1,9 @@
-package com.assistant.mail.workflow;
+package com.assistant.mail.workflow.turn;
+
+import com.assistant.mail.workflow.planner.Planner;
+import com.assistant.mail.workflow.shared.MemoryFile;
+import com.assistant.mail.workflow.summary.SummaryWorkflow;
+import com.assistant.mail.workflow.writer.WriterWorkflow;
 
 import com.assistant.mail.model.ask.Request;
 import com.assistant.mail.model.memory.LongTermMemory;

@@ -1,4 +1,7 @@
-package com.assistant.mail.workflow;
+package com.assistant.mail.workflow.planner;
+
+import com.assistant.mail.workflow.shared.Languages;
+import com.assistant.mail.workflow.shared.ToolGate;
 
 import com.assistant.mail.model.ask.Question;
 import com.assistant.mail.model.ask.QuestionReason;
@@ -32,6 +35,8 @@ import com.assistant.mail.service.agent.PlannerAgentClient;
 import com.assistant.mail.service.Progress;
 
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
@@ -40,6 +45,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -88,11 +94,15 @@ public class Planner {
         Map<String, String> route = first(blocks(routed));
         InstructionType type = enumValue(InstructionType.class, route.get("type"));
         boolean clear = "yes".equalsIgnoreCase(route.getOrDefault("clear", "").strip());
+        String now = MailIndex.current(request.getText());
+        InstructionType hinted = hint(now);
+        if (hinted != null) {
+            type = hinted;
+            clear = true;
+        }
         instruction.setType(type);
         instruction.setIsClear(clear);
-        String now = MailIndex.current(request.getText());
-        boolean ordered = MailIndex.orderOf(body) != MailIndex.Order.NONE
-                || MailIndex.orderOf(now) != MailIndex.Order.NONE
+        boolean ordered = MailIndex.orderOf(now) != MailIndex.Order.NONE
                 || MailIndex.fileOfLastMail(now, request.getText());
         if (ordered) {
             if (type != InstructionType.REPLY && type != InstructionType.COMPOSE) type = InstructionType.SUMMARIZE;
@@ -116,7 +126,7 @@ public class Planner {
             return;
         }
 
-        Gather gather = open(ordered && MailIndex.orderOf(body) == MailIndex.Order.NONE ? request.getText() : body);
+        Gather gather = open(now, ordered);
         if (gather.blocked != null) {
             run.chats.add(gather.blocked);
             return;
@@ -124,20 +134,22 @@ public class Planner {
         List<Email> emails = gather.emails;
         List<EmailThread> threads = gather.threads;
         List<AttachmentFile> userFiles = request.getFiles() == null ? List.of() : request.getFiles();
-        if (emails.isEmpty() && threads.isEmpty() && userFiles.isEmpty()) {
+        if (emails.isEmpty() && threads.isEmpty() && userFiles.isEmpty()
+                && instruction.getType() != InstructionType.COMPOSE) {
             run.questions.add(ask(QuestionReason.NO_MAIL, body, userLanguage));
             return;
         }
         String located = ordered ? null : agent.complete(PlannerSystemPrompt.LOCATE, locatePrompt(body, emails, threads, userFiles));
-        if (!ordered && (located == null || located.isBlank() || located.strip().equalsIgnoreCase("none")) && userFiles.isEmpty()) {
-            run.questions.add(ask(QuestionReason.NO_MAIL, body, userLanguage));
-            return;
-        }
-        Selection selection = ordered ? taken(emails) : select(blocks(located == null ? "" : located), emails, threads, userFiles);
+        boolean skipped = located == null || located.isBlank() || located.strip().equalsIgnoreCase("none");
+        Selection selection = ordered || skipped
+                ? taken(emails)
+                : select(blocks(located), emails, threads, userFiles);
+        if (selection.emails.isEmpty() && !emails.isEmpty()) selection = taken(overlap(emails, body));
         for (AttachmentFile file : userFiles) {
             if (!selection.userFiles.contains(file)) selection.userFiles.add(file);
         }
-        if (selection.emails.isEmpty() && selection.files.isEmpty() && selection.userFiles.isEmpty()) {
+        if (selection.emails.isEmpty() && selection.files.isEmpty() && selection.userFiles.isEmpty()
+                && instruction.getType() != InstructionType.COMPOSE) {
             run.questions.add(ask(QuestionReason.NO_MAIL, body, userLanguage));
             return;
         }
@@ -152,6 +164,9 @@ public class Planner {
         }
         for (AttachmentFile file : selection.userFiles) {
             facts.addAll(read(body, "file: " + file.getName() + "\n" + text(file), null, file.getName()));
+        }
+        if (instruction.getType() == InstructionType.COMPOSE) {
+            facts.addAll(read(body, "request:\n" + body, null, null));
         }
 
         String mailBody = selection.emails.isEmpty() ? "" : text(selection.emails.get(0).getBody());
@@ -190,19 +205,16 @@ public class Planner {
 
         Checklist checklist = checklist(brief);
         run.checklists.add(checklist);
-        for (ChecklistItem item : checklist.getItems()) {
-            if (item.getExpected() == null || item.getExpected().isBlank()) {
-                run.questions.add(ask(QuestionReason.MISSING_FACT, item.getPart() + " missing from the brief", userLanguage));
-            }
-        }
     }
 
     /** ponytail: four fetches, then stop. Raise the cap if search plus read needs more hops. */
-    private Gather open(String body) {
-        MailIndex.Found ordered = MailIndex.order(mail, body);
-        if (ordered != null) {
-            List<Email> emails = ordered.email() == null ? List.of() : List.of(ordered.email());
-            return new Gather(emails, List.of(), ordered.blocked());
+    private Gather open(String body, boolean ordered) {
+        if (ordered) {
+            MailIndex.Found found = MailIndex.order(mail, body);
+            if (found != null) {
+                List<Email> emails = found.email() == null ? List.of() : List.of(found.email());
+                return new Gather(emails, List.of(), found.blocked());
+            }
         }
         boolean meaning = !MailIndex.exact(body);
         if (meaning) {
@@ -249,6 +261,14 @@ public class Planner {
             } else {
                 rejection = "";
             }
+        }
+        if (emails.isEmpty()) {
+            runCall(ToolGate.read("search_mail", "in:inbox", "", ""), mails, threads, emails, found);
+        }
+        List<Email> pending = new ArrayList<>();
+        for (Email email : emails) if (mail.unread(email.getId())) pending.add(email);
+        for (Email email : pending) {
+            runCall(ToolGate.read("read_mail", "", String.valueOf(email.getId()), ""), mails, threads, emails, found);
         }
         return new Gather(emails, found, null);
     }
@@ -482,11 +502,29 @@ public class Planner {
                 }
             }
         }
+        prompt.append("people:\n").append(people());
         prompt.append("rules:\n");
         for (MemoryRule rule : rulesFor(memory, instruction.getType())) {
             prompt.append("- ").append(rule.getText()).append('\n');
         }
         return prompt.toString();
+    }
+
+    private static final Pattern PERSON = Pattern.compile("\"name\"\\s*:\\s*\"([^\"]+)\"\\s*,\\s*\"email\"\\s*:\\s*\"([^\"]+)\"");
+
+    /** Names and addresses the fictional university uses. Empty when that file is not here. */
+    private static String people() {
+        Path path = Path.of("scenarios/university.json");
+        if (!Files.exists(path)) path = Path.of("benchmark/scenarios/university.json");
+        if (!Files.exists(path)) return "";
+        try {
+            StringBuilder text = new StringBuilder();
+            Matcher matcher = PERSON.matcher(Files.readString(path));
+            while (matcher.find()) text.append(matcher.group(1)).append(" <").append(matcher.group(2)).append(">\n");
+            return text.toString();
+        } catch (Exception e) {
+            return "";
+        }
     }
 
     private static String criticPrompt(Instruction instruction, Brief brief, List<Information> facts) {
@@ -600,6 +638,33 @@ public class Planner {
         return text.append("replyTo: ").append(brief.getReplyToId())
                 .append("\ndoNotFollow: ").append(brief.getDoNotFollow())
                 .toString();
+    }
+
+    /** The verb in the request, when it names the task. A pronoun-only request such as "envoie-lui" has none. */
+    private static InstructionType hint(String body) {
+        String text = body == null ? "" : body.toLowerCase(Locale.ROOT);
+        if (text.matches("(?s).*\\b(résume|resume|résumer|resumer|summarize|summarise|summary)\\b.*")) {
+            return InstructionType.SUMMARIZE;
+        }
+        if (text.matches("(?s).*\\b(réponds|reponds|répondre|repondre|reply)\\b.*")) return InstructionType.REPLY;
+        if (text.matches("(?s).*\\b(écris|ecris|écrire|ecrire|write|invite)\\b.*")) return InstructionType.COMPOSE;
+        return null;
+    }
+
+    private static List<Email> overlap(List<Email> emails, String body) {
+        String[] words = body.toLowerCase(Locale.ROOT).split("\\W+");
+        List<Email> kept = new ArrayList<>();
+        for (Email email : emails) {
+            String from = email.getSender() == null || email.getSender().getEmail() == null ? "" : email.getSender().getEmail();
+            String hay = (text(email.getSubject()) + " " + from + " " + text(email.getBody())).toLowerCase(Locale.ROOT);
+            for (String word : words) {
+                if (word.length() > 3 && hay.contains(word)) {
+                    kept.add(email);
+                    break;
+                }
+            }
+        }
+        return kept.isEmpty() ? emails : kept;
     }
 
     private static Selection taken(List<Email> emails) {

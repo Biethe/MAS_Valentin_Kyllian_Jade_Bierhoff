@@ -496,9 +496,10 @@ public class Bench {
         pb.environment().put("MAILBOX_CMD", mailbox);
         pb.environment().put("TRACE_OUT", traceOut.toAbsolutePath().toString());
         Process p = pb.start();
-        if (!p.waitFor(5, TimeUnit.MINUTES)) {
+        int minutes = Integer.parseInt(System.getenv().getOrDefault("BENCH_MINUTES", "5"));
+        if (!p.waitFor(minutes, TimeUnit.MINUTES)) {
             p.destroyForcibly();
-            return "timeout after 5 minutes";
+            return "timeout after " + minutes + " minutes";
         }
         if (p.exitValue() != 0) return "system exited with " + p.exitValue();
         if (!Files.exists(traceOut)) return "no trace written to TRACE_OUT";

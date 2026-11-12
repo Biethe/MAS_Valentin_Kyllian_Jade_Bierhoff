@@ -12,6 +12,8 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.file.Path;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -44,6 +46,13 @@ public class MailboxServer {
     }
 
     public static void main(String[] args) throws Exception {
+        if (args.length == 1 && "check".equals(args[0])) {
+            if (!words("in:inbox").isEmpty() || !words("in:inbox Dubois").equals(List.of("dubois"))) {
+                throw new IllegalStateException(words("in:inbox Dubois").toString());
+            }
+            System.out.println("MailboxServer ok");
+            return;
+        }
         MailboxServer box = new MailboxServer(Path.of(args[0]), Path.of(args[1]));
         McpJsonMapper mapper = McpJsonDefaults.getMapper();
         McpServer.sync(new StdioServerTransportProvider(mapper))
@@ -96,14 +105,27 @@ public class MailboxServer {
         return Map.of("type", "object", "properties", props, "required", required);
     }
 
+    /** Drops mailbox operators such as {@code in:inbox}. An operator-only query lists the inbox. */
+    static List<String> words(String query) {
+        List<String> words = new ArrayList<>();
+        if (query == null) return words;
+        for (String word : query.toLowerCase(Locale.ROOT).split("\\s+")) {
+            if (word.isEmpty() || word.indexOf(':') >= 0) continue;
+            words.add(word);
+        }
+        return words;
+    }
+
     JsonNode searchMail(JsonNode args) {
-        String[] words = args.path("query").asString("").toLowerCase(Locale.ROOT).split("\\s+");
+        String query = args.path("query").asString("").strip();
+        if (query.startsWith("before:")) return before(query.substring("before:".length()));
+        List<String> words = words(query);
         ArrayNode hits = JSON.createArrayNode();
         for (JsonNode m : mails) {
             String hay = (m.path("subject").asString("") + " " + m.path("body").asString("") + " "
                     + m.path("from").asString("")).toLowerCase(Locale.ROOT);
-            boolean all = true;
-            for (String w : words) all &= w.isEmpty() || hay.contains(w);
+            boolean all = words.isEmpty();
+            for (String w : words) all &= hay.contains(w);
             if (!all) continue;
             String body = m.path("body").asString("");
             hits.addObject()
@@ -113,6 +135,39 @@ public class MailboxServer {
                     .put("snippet", body.substring(0, Math.min(100, body.length())));
         }
         return hits;
+    }
+
+    /** Mails strictly before that day, newest first. {@code before:2008/06/07} is the date walk, not a keyword. */
+    private ArrayNode before(String day) {
+        LocalDate cutoff;
+        try {
+            cutoff = LocalDate.parse(day, DateTimeFormatter.ofPattern("yyyy/MM/dd"));
+        } catch (RuntimeException e) {
+            return JSON.createArrayNode();
+        }
+        List<JsonNode> found = new ArrayList<>();
+        for (JsonNode mail : mails) {
+            String raw = mail.path("date").asString("");
+            if (raw.length() < 10) continue;
+            try {
+                if (LocalDate.parse(raw.substring(0, 10)).isBefore(cutoff)) found.add(mail);
+            } catch (RuntimeException ignored) {
+                // a mail with no date cannot be older
+            }
+        }
+        found.sort((a, b) -> b.path("date").asString("").compareTo(a.path("date").asString("")));
+        ArrayNode hits = JSON.createArrayNode();
+        for (JsonNode mail : found) hits.add(hit(mail));
+        return hits;
+    }
+
+    private static ObjectNode hit(JsonNode mail) {
+        String body = mail.path("body").asString("");
+        return JSON.createObjectNode()
+                .put("id", mail.path("id").asString()).put("threadId", mail.path("threadId").asString())
+                .put("from", mail.path("from").asString()).put("subject", mail.path("subject").asString())
+                .put("date", mail.path("date").asString())
+                .put("snippet", body.substring(0, Math.min(100, body.length())));
     }
 
     JsonNode readMail(JsonNode args) {

@@ -1,4 +1,7 @@
-package com.assistant.mail.workflow;
+package com.assistant.mail.workflow.writer;
+
+import com.assistant.mail.workflow.planner.PlannerMemory;
+import com.assistant.mail.workflow.writer.WriterWorkflow.Result;
 
 import com.assistant.mail.model.brief.Brief;
 import com.assistant.mail.model.brief.BriefPart;
@@ -20,7 +23,6 @@ import com.assistant.mail.model.plan.InstructionType;
 import com.assistant.mail.prompt.DrafterSystemPrompt;
 import com.assistant.mail.service.agent.DrafterAgentClient;
 import com.assistant.mail.service.mcp.MailClientMcp;
-import com.assistant.mail.workflow.WriterWorkflow.Result;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;

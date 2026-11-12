@@ -1,4 +1,4 @@
-package com.assistant.mail.workflow;
+package com.assistant.mail.workflow.turn;
 
 import com.assistant.mail.model.ask.Question;
 import com.assistant.mail.model.brief.Brief;

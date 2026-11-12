@@ -34,6 +34,16 @@ type DraftView = {
   subject: string;
   body: string;
   tone: string;
+  link?: string;
+};
+
+type Rule = {
+  index: number;
+  text: string;
+  reason: string;
+  agent: string;
+  vetoed: boolean;
+  fresh: boolean;
 };
 
 type Answer = {
@@ -45,6 +55,7 @@ type Answer = {
   refused?: string[];
   chats?: string[];
   draft?: DraftView;
+  rules?: Rule[];
   error?: string;
 };
 
@@ -123,14 +134,12 @@ function paragraphs(body: string) {
 
 export default function App() {
   const [focus, setFocus] = useState<Focus>("draft");
-  const [toneOpen, setToneOpen] = useState(false);
-  const [bold, setBold] = useState(false);
-  const [italic, setItalic] = useState(false);
-  const [underline, setUnderline] = useState(false);
   const [ccOpen, setCcOpen] = useState(false);
+  const [rules, setRules] = useState<Rule[]>([]);
   const [message, setMessage] = useState("");
   const [notice, setNotice] = useState("Nothing is sent. A reply is saved as a draft.");
-  const [compact, setCompact] = useState(false);
+  const embed = new URLSearchParams(window.location.search).has("embed");
+  const [mode, setMode] = useState<"button" | "panel" | "full">(embed ? "panel" : "button");
   const [busy, setBusy] = useState(false);
   const [steps, setSteps] = useState<string[]>([]);
   const [showSteps, setShowSteps] = useState(true);
@@ -151,6 +160,12 @@ export default function App() {
         else setNotice("Start the agent with ./ui/agent, then reload.");
       })
       .catch(() => setNotice("Start the agent with ./ui/agent, then reload."));
+    fetch("/api/memory")
+      .then((response) => (response.ok ? response.json() : null))
+      .then((body: { rules?: Rule[] } | null) => {
+        if (body?.rules) setRules(body.rules);
+      })
+      .catch(() => undefined);
   }, []);
 
   const draft =
@@ -221,6 +236,7 @@ export default function App() {
       setTurns((items) =>
         items.map((turn, index) => (index === items.length - 1 ? { ...turn, answer: body } : turn)),
       );
+      if (body.rules) setRules(body.rules);
       setNotice(
         body.draft
           ? "Draft saved. Nothing sent."
@@ -254,6 +270,21 @@ export default function App() {
     }
   };
 
+  const veto = async (index: number) => {
+    const response = await fetch("/api/veto", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ index }),
+    }).catch(() => null);
+    if (!response?.ok) {
+      setNotice("Could not veto that lesson.");
+      return;
+    }
+    const body = (await response.json()) as { rules?: Rule[] };
+    if (body.rules) setRules(body.rules);
+    setNotice("Vetoed. That lesson will not be used again.");
+  };
+
   const reset = async () => {
     await fetch("/api/reset", { method: "POST" }).catch(() => undefined);
     setTurns([]);
@@ -261,33 +292,39 @@ export default function App() {
     setNotice("New conversation. Nothing sent.");
   };
 
+  const setView = (next: "button" | "panel" | "full") => {
+    if (embed) {
+      const type = next === "button" ? "willow-hide" : next === "full" ? "willow-full" : "willow-panel";
+      window.parent.postMessage({ type }, "*");
+      if (next === "button") return;
+    }
+    setMode(next);
+  };
+
   return (
-    <main className={`app ${compact ? "is-compact" : ""}`}>
-      <header
-        className={`workspace-header ${focus === "header" ? "is-focused" : ""}`}
-        onMouseEnter={() => setFocus("header")}
-      >
-        <div className="brand">
+    <main className={`app is-${mode}${embed ? " is-embed" : ""}`}>
+      {mode === "button" && (
+        <button type="button" className="launcher" onClick={() => setView("panel")} aria-label="Open Willow">
           <span className="brand-mark">
             <Icon name="06a24.svg" size={36} />
             <Icon name="2ad7f.svg" size={24} className="brand-envelope" />
           </span>
-          <span className="brand-name">Willow</span>
-        </div>
-        <strong className="project-name">{status.mailbox}</strong>
-        <div className="header-actions">
-          <button className="new-conversation" onClick={reset}>
-            <Icon name="dfe8d.svg" size={20} />
-            New conversation
-          </button>
-          <button className="floating-button" onClick={() => setCompact(!compact)}>
-            <Icon name="f7c14.svg" size={18} />
-            {compact ? "Expanded view" : "Floating view"}
-          </button>
-        </div>
-      </header>
-
+        </button>
+      )}
+      {mode !== "button" && (
       <div className="workspace">
+        <div className="float-bar">
+          <span>{status.mailbox}</span>
+          <button type="button" onClick={reset}>New</button>
+          <button type="button" onClick={() => setView(mode === "full" ? "panel" : "full")}>
+            {mode === "full" ? "Float" : "Full screen"}
+          </button>
+          {mode === "panel" && (
+            <button type="button" onClick={() => setView("button")} aria-label="Hide Willow">
+              Hide
+            </button>
+          )}
+        </div>
         <section
           className={`panel-wrap conversation-wrap ${focus === "conversation" ? "is-focused" : ""}`}
           onMouseEnter={() => setFocus("conversation")}
@@ -299,9 +336,7 @@ export default function App() {
               <span className="context-title">
                 <Icon name="e07c1.svg" size={18} />
                 {threadLabel}
-                {status.model ? ` · ${status.model}` : ""}
               </span>
-              <span>{status.mailbox}</span>
               <button type="button" className="steps-toggle" onClick={() => setShowSteps(!showSteps)}>
                 {showSteps ? "Hide steps" : "Show step"}
               </button>
@@ -402,88 +437,36 @@ export default function App() {
                 <strong>{draft.subject || "—"}</strong>
               </div>
 
-              <div
-                key={draft.body}
-                className={`email-body ${bold ? "body-bold" : ""} ${
-                  italic ? "body-italic" : ""
-                } ${underline ? "body-underline" : ""}`}
-                contentEditable={!!draft.body}
-                suppressContentEditableWarning
-                aria-label="Draft email content"
-              >
+              <div key={draft.body} className="email-body" aria-label="Draft email content">
                 {draft.body
                   ? paragraphs(draft.body).map((part) => <p key={part}>{part}</p>)
                   : <p>No draft yet. Ask in the conversation.</p>}
               </div>
-
-              <div className="editor-toolbar">
-                <div className="format-actions">
-                  <button
-                    className={bold ? "active" : ""}
-                    onClick={() => setBold(!bold)}
-                    aria-label="Bold"
-                    type="button"
-                  >
-                    <strong>B</strong>
-                  </button>
-                  <button
-                    className={italic ? "active" : ""}
-                    onClick={() => setItalic(!italic)}
-                    aria-label="Italic"
-                    type="button"
-                  >
-                    I
-                  </button>
-                  <button
-                    className={underline ? "active" : ""}
-                    onClick={() => setUnderline(!underline)}
-                    aria-label="Underline"
-                    type="button"
-                  >
-                    U
-                  </button>
-                  <button aria-label="Upload a file" type="button" onClick={() => fileRef.current?.click()}>
-                    <Icon name="87083.svg" size={18} />
-                  </button>
-                </div>
-                <div className="tone-control">
-                  <button type="button" onClick={() => setToneOpen(!toneOpen)}>
-                    {draft.tone || "Tone"}
-                    <Icon name="b0745.svg" size={16} />
-                  </button>
-                  {toneOpen && (
-                    <div className="tone-menu">
-                      {["FORMAL", "POLITE", "DIRECT", "INFORMAL"].map((tone) => (
-                        <button
-                          key={tone}
-                          type="button"
-                          onClick={() => {
-                            setToneOpen(false);
-                            void ask(`Rewrite the draft in a ${tone.toLowerCase()} tone. Keep the facts.`);
-                          }}
-                        >
-                          {tone.charAt(0) + tone.slice(1).toLowerCase()}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
             </article>
 
-            <div className="refine-area">
-              <h3>REFINE WITH WILLOW</h3>
-              <div className="refine-actions">
-                <button type="button" onClick={() => void ask("Make the draft shorter.")}>
-                  Make it shorter
-                </button>
-                <button type="button" onClick={() => void ask("Make the draft more casual.")}>
-                  More casual
-                </button>
-                <button type="button" onClick={() => void ask("Add one concrete detail from the mail.")}>
-                  Add a detail
-                </button>
-              </div>
+            <div className="memory-area">
+              <h3>LESSONS TO KEEP</h3>
+              {rules.length === 0 ? (
+                <p className="memory-empty">No lesson yet. After a turn, a rule the critic kept shows up here.</p>
+              ) : (
+                <ul className="memory-list">
+                  {[...rules].reverse().map((rule) => (
+                    <li key={rule.index} className={rule.vetoed ? "is-vetoed" : ""}>
+                      {rule.fresh && !rule.vetoed && <span className="memory-new">New</span>}
+                      <p>{rule.text}</p>
+                      {rule.reason && <small>{rule.reason}</small>}
+                      {rule.agent && <small>{rule.agent.toLowerCase()}</small>}
+                      {rule.vetoed ? (
+                        <span className="memory-vetoed">Vetoed</span>
+                      ) : (
+                        <button type="button" onClick={() => void veto(rule.index)}>
+                          Veto
+                        </button>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
 
             <div className="draft-footer">
@@ -491,21 +474,21 @@ export default function App() {
                 <Icon name="beb45.svg" size={18} />
                 {notice}
               </span>
-              <a
-                className="open-draft"
-                href={
-                  draft.to
-                    ? `mailto:${encodeURIComponent(draft.to.split(",")[0].trim())}?subject=${encodeURIComponent(draft.subject)}`
-                    : "#draft"
-                }
-              >
-                Open draft in mail
-                <Icon name="48f0e.svg" size={16} />
-              </a>
+              {draft.link ? (
+                <a className="open-draft" href={draft.link} target="_blank" rel="noreferrer">
+                  Open draft in mail
+                  <Icon name="48f0e.svg" size={16} />
+                </a>
+              ) : (
+                <button type="button" className="open-draft" disabled>
+                  {draft.body ? "No mail link for this draft" : "Open draft in mail"}
+                </button>
+              )}
             </div>
           </div>
         </section>
       </div>
+      )}
     </main>
   );
 }

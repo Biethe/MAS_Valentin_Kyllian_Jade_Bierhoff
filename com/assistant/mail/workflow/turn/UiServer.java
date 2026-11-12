@@ -1,4 +1,9 @@
-package com.assistant.mail.workflow;
+package com.assistant.mail.workflow.turn;
+
+import com.assistant.mail.workflow.planner.Planner;
+import com.assistant.mail.workflow.shared.MemoryFile;
+import com.assistant.mail.workflow.summary.SummaryWorkflow;
+import com.assistant.mail.workflow.writer.WriterWorkflow;
 
 import com.assistant.mail.model.ask.Question;
 import com.assistant.mail.model.ask.QuestionReason;
@@ -7,6 +12,7 @@ import com.assistant.mail.model.fact.Information;
 import com.assistant.mail.model.fact.InformationKind;
 import com.assistant.mail.model.mail.AttachmentFile;
 import com.assistant.mail.model.memory.LongTermMemory;
+import com.assistant.mail.model.memory.MemoryRule;
 import com.assistant.mail.model.output.Draft;
 import com.assistant.mail.model.output.Summary;
 import com.assistant.mail.service.Progress;
@@ -38,7 +44,7 @@ public final class UiServer {
         if (args.length > 0 && "check".equals(args[0])) {
             Turn.Outcome outcome = new Turn.Outcome();
             outcome.questions.add(new Question("Which mail?", QuestionReason.NO_MAIL, List.of()));
-            String body = payload(outcome);
+            String body = payload(outcome, null, 0);
             if (!body.contains("Which mail?")) throw new IllegalStateException(body);
             System.out.println("UiServer ok");
             return;
@@ -47,13 +53,15 @@ public final class UiServer {
         server.createContext("/api/status", UiServer::status);
         server.createContext("/api/progress", UiServer::progress);
         server.createContext("/api/reset", UiServer::reset);
+        server.createContext("/api/memory", UiServer::memory);
+        server.createContext("/api/veto", UiServer::veto);
         server.createContext("/api/turn", UiServer::turn);
         server.setExecutor(Executors.newFixedThreadPool(4));
         server.start();
         System.out.println("UI agent on http://127.0.0.1:" + PORT + " mailbox=" + mailbox());
     }
 
-    static String payload(Turn.Outcome outcome) {
+    static String payload(Turn.Outcome outcome, LongTermMemory memory, int known) {
         Turn.Outcome turn = outcome == null ? new Turn.Outcome() : outcome;
         ObjectNode root = JSON.createObjectNode();
         root.put("text", TraceFile.text(turn));
@@ -87,6 +95,7 @@ public final class UiServer {
         ArrayNode chats = root.putArray("chats");
         for (String line : turn.chats) if (line != null && !line.isBlank()) chats.add(line.strip());
         if (!turn.drafts.isEmpty()) root.set("draft", draftNode(turn.drafts.get(0)));
+        root.set("rules", rules(memory, known));
         if (chats.isEmpty() && questions.isEmpty() && refused.isEmpty() && !root.has("draft") && !root.has("summary")) {
             chats.add(root.path("text").asString("No answer."));
         }
@@ -110,7 +119,25 @@ public final class UiServer {
         node.put("subject", draft.getSubject() == null ? "" : draft.getSubject());
         node.put("body", draft.getBody() == null ? "" : draft.getBody());
         node.put("tone", draft.getTone() == null ? "" : draft.getTone().name());
+        node.put("link", draft.getLink() == null ? "" : draft.getLink());
         return node;
+    }
+
+    private static ArrayNode rules(LongTermMemory memory, int known) {
+        ArrayNode nodes = JSON.createArrayNode();
+        if (memory == null || memory.getRules() == null) return nodes;
+        List<MemoryRule> list = memory.getRules();
+        for (int i = 0; i < list.size(); i++) {
+            MemoryRule rule = list.get(i);
+            ObjectNode node = nodes.addObject();
+            node.put("index", i);
+            node.put("text", rule.getText() == null ? "" : rule.getText());
+            node.put("reason", rule.getReason() == null ? "" : rule.getReason());
+            node.put("agent", rule.getAgent() == null ? "" : rule.getAgent().name());
+            node.put("vetoed", Boolean.TRUE.equals(rule.getVetoed()));
+            node.put("fresh", i >= known);
+        }
+        return nodes;
     }
 
     private static String join(List<String> values) {
@@ -125,7 +152,10 @@ public final class UiServer {
         ObjectNode root = JSON.createObjectNode();
         root.put("mailbox", mailbox());
         root.put("scenario", System.getenv().getOrDefault("SCENARIO", ""));
-        root.put("model", System.getenv().getOrDefault("AGENT_MODEL", "qwen3.5:4b"));
+        root.put("model", "write " + OllamaAgent.writerModel()
+                + " · plan " + OllamaAgent.plannerModel()
+                + " · critic " + OllamaAgent.criticModel()
+                + " · judge " + OllamaAgent.judgeModel());
         send(exchange, 200, root.toString());
     }
 
@@ -140,8 +170,33 @@ public final class UiServer {
             send(exchange, 405, "{\"error\":\"POST\"}");
             return;
         }
-        MemoryFile.save(MEMORY, new LongTermMemory());
         send(exchange, 200, "{\"ok\":true}");
+    }
+
+    private static void memory(HttpExchange exchange) throws IOException {
+        send(exchange, 200, JSON.createObjectNode().set("rules", rules(MemoryFile.load(MEMORY), Integer.MAX_VALUE)).toString());
+    }
+
+    private static void veto(HttpExchange exchange) throws IOException {
+        if (!"POST".equals(exchange.getRequestMethod())) {
+            send(exchange, 405, "{\"error\":\"POST\"}");
+            return;
+        }
+        int index;
+        try {
+            index = JSON.readTree(exchange.getRequestBody().readAllBytes()).path("index").asInt(-1);
+        } catch (RuntimeException e) {
+            send(exchange, 400, error("Unreadable request"));
+            return;
+        }
+        LongTermMemory memory = MemoryFile.load(MEMORY);
+        if (index < 0 || memory.getRules() == null || index >= memory.getRules().size()) {
+            send(exchange, 400, error("No such lesson"));
+            return;
+        }
+        memory.getRules().get(index).setVetoed(true);
+        MemoryFile.save(MEMORY, memory);
+        send(exchange, 200, JSON.createObjectNode().set("rules", rules(memory, Integer.MAX_VALUE)).toString());
     }
 
     private static void turn(HttpExchange exchange) throws IOException {
@@ -176,6 +231,7 @@ public final class UiServer {
         try {
             OllamaAgent model = new OllamaAgent();
             LongTermMemory memory = MemoryFile.load(MEMORY);
+            int known = memory.getRules() == null ? 0 : memory.getRules().size();
             Turn.Outcome outcome;
         String prompt = history.isBlank() ? message : "Conversation so far:\n" + history + "\nCurrent request:\n" + message;
             try (MailboxClient mail = MailboxClient.open()) {
@@ -187,7 +243,7 @@ public final class UiServer {
             MemoryFile.save(MEMORY, memory);
             System.out.println("turn done " + TraceFile.text(outcome));
             Progress.note("Finished");
-            send(exchange, 200, payload(outcome));
+            send(exchange, 200, payload(outcome, memory, known));
         } catch (RuntimeException e) {
             String text = e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage();
             System.out.println("turn error " + text);

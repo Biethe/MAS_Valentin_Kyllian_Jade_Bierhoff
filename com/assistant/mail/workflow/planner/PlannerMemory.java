@@ -1,4 +1,4 @@
-package com.assistant.mail.workflow;
+package com.assistant.mail.workflow.planner;
 
 import com.assistant.mail.model.memory.AgentKind;
 import com.assistant.mail.model.memory.Dispute;
@@ -61,7 +61,7 @@ public final class PlannerMemory {
         memory.getRules().add(rule);
     }
 
-    static String render(List<MemoryRule> rules) {
+    public static String render(List<MemoryRule> rules) {
         StringBuilder text = new StringBuilder();
         for (MemoryRule rule : rules) text.append("- ").append(rule.getText()).append('\n');
         return text.toString();

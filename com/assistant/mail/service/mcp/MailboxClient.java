@@ -40,6 +40,7 @@ public final class MailboxClient implements MailClientMcp, AutoCloseable {
     private final Tools tools;
     private final Map<String, Long> locals = new HashMap<>();
     private final Map<Long, String> serverIds = new HashMap<>();
+    private final Map<Long, String> draftLinks = new HashMap<>();
     private final Set<Long> unread = new HashSet<>();
     private long nextId = 1;
 
@@ -207,7 +208,15 @@ public final class MailboxClient implements MailClientMcp, AutoCloseable {
         JsonNode result = call(tools.draft, args);
         String draftId = text(result, "draftId", "id", "messageId", "draft_id");
         if (draftId.isBlank()) throw new IllegalArgumentException(result.toString());
-        return localId(draftId);
+        long id = localId(draftId);
+        String link = text(result, "webLink", "web_link");
+        if (!link.isBlank()) draftLinks.put(id, link);
+        return id;
+    }
+
+    @Override
+    public String draftLink(Long id) {
+        return id == null ? "" : draftLinks.getOrDefault(id, "");
     }
 
     private boolean outlook() {

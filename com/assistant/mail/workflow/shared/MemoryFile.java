@@ -1,4 +1,4 @@
-package com.assistant.mail.workflow;
+package com.assistant.mail.workflow.shared;
 
 import com.assistant.mail.model.memory.LongTermMemory;
 import com.assistant.mail.model.memory.MemoryRule;

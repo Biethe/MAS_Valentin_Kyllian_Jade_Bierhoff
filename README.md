@@ -6,14 +6,17 @@ A local assistant that reads a mailbox, summarizes mail, and saves drafts. It ne
 
 - Java 21 and Maven
 - Node.js (for the chat page)
-- Ollama, with the two models below
+- Ollama, with these models
 
 ```bash
 ollama pull qwen3.5:4b
+ollama pull qwen3.5:9b-q4_K_M
+ollama pull llama3.1:8b
+ollama pull tev1
 ollama pull all-minilm:22m
 ```
 
-`AGENT_MODEL` overrides the chat model (default `qwen3.5:4b`). `OLLAMA_HOST` overrides the Ollama URL (default `http://localhost:11434`).
+The writer and the summarizer use `AGENT_MODEL` (default `qwen3.5:4b`). The planner uses `PLANNER_MODEL` (default `qwen3.5:9b-q4_K_M`). The critic uses `CRITIC_MODEL` (default `llama3.1:8b`, a similar size from Meta rather than Qwen). The judge that picks between an agent and the critic uses `JUDGE_MODEL` (default `tev1`). `OLLAMA_HOST` overrides the Ollama URL (default `http://localhost:11434`).
 
 ## Chat page
 
@@ -116,13 +119,15 @@ OUTLOOK_CMD="$PWD/.venv/bin/office-connect --keyfile $HOME/.config/office-connec
 
 A reply is saved on the same thread as a draft. It is not sent.
 
+To put the button on the Outlook page itself, keep `./ui/agent` and `npm run dev` running, then in Edge or Chrome open `edge://extensions` or `chrome://extensions`, turn on Developer mode, and choose Load unpacked. Pick `ui/extension`. Open https://outlook.live.com/mail/. A **W** button sits on that page. It opens Willow over the inbox. Hide closes it. A separate Willow tab is no longer required.
+
 ## One request from the terminal
 
 Same mailbox variables as `./ui/agent`. Prints the answer and does not start the chat page.
 
 ```bash
 java -cp "ui/agent-classes:benchmark/target/classes:benchmark/target/lib/*" \
-  com.assistant.mail.workflow.MailMain "summarize my last mail"
+  com.assistant.mail.workflow.turn.MailMain "summarize my last mail"
 ```
 
 ## Benchmark

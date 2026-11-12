@@ -18,4 +18,4 @@ if [ "$MAIL_MCP" = "university" ]; then
   export MAILBOX_CMD="${MAILBOX_CMD:-java -cp benchmark/target/classes:benchmark/target/lib/* com.assistant.mail.mailbox.MailboxServer $SCENARIO ui/tools.jsonl}"
 fi
 exec java -cp "ui/agent-classes:benchmark/target/classes:benchmark/target/lib/*" \
-  com.assistant.mail.workflow.UiServer
+  com.assistant.mail.workflow.turn.UiServer

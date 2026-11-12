@@ -1,4 +1,4 @@
-package com.assistant.mail.workflow;
+package com.assistant.mail.workflow.shared;
 
 import java.util.ArrayList;
 import java.util.List;

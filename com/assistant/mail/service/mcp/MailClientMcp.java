@@ -28,4 +28,7 @@ public interface MailClientMcp {
 
     /** Places one draft in the drafts folder. It is never sent. A compose passes no inReplyTo. */
     Long createDraft(List<String> to, List<String> cc, List<String> bcc, String subject, String body, Long inReplyTo);
+
+    /** Web link for a draft this client just saved. Empty when the mailbox has none. */
+    default String draftLink(Long id) { return ""; }
 }

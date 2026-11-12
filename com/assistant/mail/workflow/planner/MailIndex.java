@@ -1,4 +1,4 @@
-package com.assistant.mail.workflow;
+package com.assistant.mail.workflow.planner;
 
 import com.assistant.mail.model.mail.Email;
 import com.assistant.mail.service.Progress;

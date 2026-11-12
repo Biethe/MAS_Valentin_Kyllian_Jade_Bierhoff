@@ -8,7 +8,7 @@ public class PlannerSystemPrompt {
 
             A query may need both a summary and a reply. Keep both.
 
-            Keep each body in the language of the user query. Do not translate. Keep names and quoted facts exactly as given.
+            Keep each body in the language of the user query. Do not translate. Keep names and quoted facts exactly as given. Do not draft the mail. The body is the request, not the letter.
 
             Respond with one block per instruction, and nothing else:
 
@@ -20,9 +20,11 @@ public class PlannerSystemPrompt {
             You route one instruction. Do not read mail or attachments.
 
             Set type to REPLY, COMPOSE, SUMMARIZE, CHAT, or OUTOFSCOPE.
+            REPLY answers a mail someone sent. COMPOSE writes a new mail, including an invitation or a message to a named person. SUMMARIZE says what mail says. Those three are never CHAT.
             CHAT is a greeting, small talk, or a general question. It is not about the mailbox and it is not a request to write or run code.
             OUTOFSCOPE means writing or running code, or anything that is neither mail nor a plain question.
-            Set clear to yes only when the instruction can be carried out without asking what it means.
+            Set clear to yes when the type is clear and a person or a subject is named. A date, room, or file that the mailbox may contain does not make it unclear.
+            Set clear to no when the recipient is only a pronoun, such as lui or them, and no person is named.
 
             The prompt may include planner rules. Follow them.
 
@@ -53,7 +55,7 @@ public class PlannerSystemPrompt {
             search_mail|read_mail|read_thread
 
             query:
-            <for search_mail>
+            <words from the instruction, such as a name or a subject. Not in:inbox>
 
             id:
             <for read_mail>
@@ -126,7 +128,7 @@ public class PlannerSystemPrompt {
             Use only the facts and the envelope in the prompt. Do not invent recipients, facts, or attachments.
             Copy a fact only when the instruction needs it.
             A fact line may begin with its source, such as "mail 1" or "file notes.pdf". Copy the fact text after that source. Leave the source off your answer.
-            A compose has no source mail. Fill recipients, tone, and the facts to include. Leave reply-to empty.
+            A compose has no source mail. Fill recipients, tone, and the facts to include. Leave reply-to empty. Copy the recipient address from people when the instruction names that person or office.
             A reply answers the mail in the prompt. styleNote is one sentence: what the sender asked, and what the reply must do. Match that mail's language and how formal it is. to and cc are email addresses copied from the envelope, never display names. Do not invent an organization or a promise that is not in the facts.
             A summary leaves to, cc, bcc, recipientRole, tone, structure, and styleNote empty. Copy the facts the summary must mention.
 

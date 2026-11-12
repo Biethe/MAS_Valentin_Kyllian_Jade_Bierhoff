@@ -1,0 +1,35 @@
+.willow-launch {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 2147483646;
+  width: 56px;
+  height: 56px;
+  border: 0;
+  border-radius: 16px;
+  background: #191919;
+  color: #fff;
+  font: 600 22px Arial, sans-serif;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.28);
+  cursor: pointer;
+}
+
+.willow-frame {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 2147483646;
+  width: min(960px, calc(100vw - 32px));
+  height: min(720px, calc(100vh - 48px));
+  border: 0;
+  border-radius: 16px;
+  background: #f6f6f6;
+  box-shadow: 0 16px 48px rgb(0 0 0 / 0.28);
+}
+
+.willow-frame.is-full {
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  border-radius: 0;
+}

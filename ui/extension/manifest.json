@@ -1,0 +1,27 @@
+{
+  "manifest_version": 3,
+  "name": "Willow",
+  "version": "1.0",
+  "description": "Opens the Willow mail assistant on the Outlook page.",
+  "content_scripts": [
+    {
+      "matches": [
+        "https://outlook.live.com/*",
+        "https://outlook.office.com/*",
+        "https://outlook.office365.com/*"
+      ],
+      "js": ["content.js"],
+      "css": ["content.css"]
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["frame.html"],
+      "matches": [
+        "https://outlook.live.com/*",
+        "https://outlook.office.com/*",
+        "https://outlook.office365.com/*"
+      ]
+    }
+  ]
+}

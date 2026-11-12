@@ -1,4 +1,6 @@
-package com.assistant.mail.workflow;
+package com.assistant.mail.workflow.planner;
+
+import com.assistant.mail.workflow.shared.Languages;
 
 import com.assistant.mail.model.ask.QuestionReason;
 import com.assistant.mail.model.ask.Request;

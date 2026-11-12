@@ -1,4 +1,7 @@
-package com.assistant.mail.workflow;
+package com.assistant.mail.workflow.summary;
+
+import com.assistant.mail.workflow.planner.PlannerMemory;
+import com.assistant.mail.workflow.summary.SummaryWorkflow.Result;
 
 import com.assistant.mail.model.brief.Brief;
 import com.assistant.mail.model.brief.BriefPart;
@@ -18,7 +21,6 @@ import com.assistant.mail.model.output.Summary;
 import com.assistant.mail.model.plan.InstructionType;
 import com.assistant.mail.prompt.SummarizerSystemPrompt;
 import com.assistant.mail.service.agent.SummarizerAgentClient;
-import com.assistant.mail.workflow.SummaryWorkflow.Result;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
