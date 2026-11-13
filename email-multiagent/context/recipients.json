@@ -1,0 +1,44 @@
+{
+  "research@univ.fr" : {
+    "email" : "research@univ.fr",
+    "name" : "Research Office",
+    "role" : "Research",
+    "organization" : "University",
+    "notes" : "Manages the research project. Include project details and dates in replies."
+  },
+  "no-reply@accounts.google.com" : {
+    "email" : "no-reply@accounts.google.com",
+    "name" : "Google",
+    "role" : "Automated security alert",
+    "organization" : "Google",
+    "notes" : "Automated notification. No reply is needed."
+  },
+  "admin@univ.fr" : {
+    "email" : "admin@univ.fr",
+    "name" : "University Administration",
+    "role" : "Administration",
+    "organization" : "University",
+    "notes" : "Handles procedures and deadlines. Use a formal tone and include the student number."
+  },
+  "news@example.com" : {
+    "email" : "news@example.com",
+    "name" : "Newsletter",
+    "role" : "Editor",
+    "organization" : "Example",
+    "notes" : "Weekly newsletter. No reply is needed."
+  },
+  "geekman973@gmail.com" : {
+    "email" : "geekman973@gmail.com",
+    "name" : "geekman973@gmail.com",
+    "role" : "Unknown",
+    "organization" : "Unknown",
+    "notes" : "No knowledge yet.\n\nLast reply: Valentin\nJe t'ai déjà rendu le cahier, n'oublies pas la réunion samedi"
+  },
+  "prof@univ.fr" : {
+    "email" : "prof@univ.fr",
+    "name" : "Prof. Martin",
+    "role" : "Professor",
+    "organization" : "University",
+    "notes" : "Teaches the multi-agent systems course. Prefers concise replies. Expects reports before the deadline."
+  }
+}

@@ -10,3 +10,8 @@
 /benchmark/target/
 /benchmark/runs/
 
+
+# Maven / OS
+target/
+logs/
+.DS_Store

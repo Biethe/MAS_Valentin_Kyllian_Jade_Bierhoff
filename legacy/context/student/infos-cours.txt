@@ -1,0 +1,13 @@
+INFORMATIONS PEDAGOGIQUES (a l'attention des etudiants)
+--------------------------------------------------------
+Cours "Systemes Multi-Agents" (M2 IA) :
+- volume horaire : 24h ;
+- evaluation : projet de groupe (60%) + examen (40%) ;
+- depot du projet : dernier vendredi de janvier sur la plateforme.
+
+Regles de vie courante :
+- delai de reponse aux emails etudiants : 48h ouvrables ;
+- toute demande de releve de notes doit passer par le secretariat ;
+- les demandes de stage doivent preciser l'entreprise, la periode et le sujet.
+
+Ne jamais communiquer les notes individuelles par email sans verification d'identite.

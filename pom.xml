@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>com.assistant.mail</groupId>
+  <artifactId>mas-mail-assistant</artifactId>
+  <version>0.1.0</version>
+  <packaging>pom</packaging>
+  <name>MAS mail assistant (aggregator)</name>
+
+  <!-- Build order matters: the core first, then the app that embeds it, then the benchmark. -->
+  <modules>
+    <module>assistant-core</module>
+    <module>email-multiagent</module>
+    <module>benchmark</module>
+  </modules>
+</project>
