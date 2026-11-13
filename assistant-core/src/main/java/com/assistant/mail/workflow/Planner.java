@@ -479,6 +479,7 @@ public class Planner {
                 briefPrompt(instruction, facts, selection, memory, language));
         Brief brief = new Brief();
         brief.setTask(instruction.getType());
+        brief.setFocus(instruction.getBody());
         brief.setTo(addresses(values(raw, "to")));
         brief.setCc(addresses(values(raw, "cc")));
         if (instruction.getType() == InstructionType.REPLY && !selection.emails.isEmpty()) {

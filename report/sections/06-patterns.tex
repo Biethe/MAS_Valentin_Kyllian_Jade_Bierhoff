@@ -1,0 +1,29 @@
+\section{Patrons de conception utilisés et justification}
+
+Nous n'avons pas cherché à multiplier les patrons : chacun répond à un besoin concret de l'énoncé (remplacer le modèle, ajouter une stratégie de routage, un agent, une source de contexte).
+
+\begin{table}[ht]
+\centering
+\small
+\begin{tabularx}{\textwidth}{@{}p{2.6cm}p{4.3cm}X@{}}
+\toprule
+\textbf{Patron} & \textbf{Où} & \textbf{Besoin auquel il répond}\\
+\midrule
+Strategy & \code{RouterStrategy} (mots-clés, LLM, hybride, feedback) ; \code{Embedder} ; \code{KnowledgeSource} & Ajouter ou échanger une stratégie de routage, de recherche ou de connaissance sans modifier ses clients ; comparer les stratégies sur le même jeu de test.\\
+Template Method & \code{AbstractAgent.handle} & Tous les agents suivent le même déroulement (contexte, prompt, mémoire, LLM, réponse) ; une sous-classe ne fournit que sa catégorie et son prompt. Ajouter un agent revient à écrire une petite classe.\\
+Factory & \code{AgentFactory}, \code{RouterFactory}, \code{LLMClientFactory}, \code{MailClientFactory}, \code{Assistant.create} & Isoler le choix des classes concrètes selon la configuration.\\
+Registry & \code{AgentRegistry} & Retrouver l'agent d'une catégorie ; permet d'enregistrer un agent sans modifier le routeur.\\
+Adapter & \code{OllamaClient}, \code{OllamaChat}, \code{ImapMailClient}, \code{SmtpMailSender}, \code{MailboxClient} (MCP) & Adapter un service extérieur (Ollama, IMAP, serveur MCP) à une interface du domaine.\\
+Facade & \code{EmailAssistantSystem}, \code{Turn}, \code{Assistant} & Offrir un point d'entrée unique et simple au terminal, au web et au benchmark.\\
+Decorator & \code{FeedbackRouter}, \code{TolerantReplies} & Ajouter un comportement (pondération par le retour utilisateur, correction du format) autour d'un composant sans le modifier.\\
+Repository & \code{PromptRepository}, \code{RecipientKnowledgeBase}, \code{AuditLog}, \code{FeedbackStore} & Séparer l'accès aux données persistantes de leur usage.\\
+Composition root & \code{AppContext} & Un seul endroit construit les objets ; le reste ne dépend que d'interfaces (faible couplage).\\
+Pipeline / chaîne d'étapes & \code{Planner} puis \code{Writer}/\code{Summary} & Étapes courtes à sortie structurée, chacune vérifiable ; une étape ne connaît que le contrat de la suivante.\\
+\bottomrule
+\end{tabularx}
+\caption{Patrons de conception et justification.}
+\end{table}
+
+Nous n'avons \emph{pas} utilisé Observer, Mediator, Command ni Chain of Responsibility : aucun besoin réel ne le justifiait. L'appel d'outils passe par une barrière unique (\code{ToolGate}) plutôt que par une chaîne de responsabilités.
+
+\paragraph{Principes orientés objet.} Encapsulation : objets de transfert aux champs privés et accesseurs ; abstraction : ports pour le modèle, le courrier, le contexte et le routage ; faible couplage : \code{email-core} ignore le transport et l'interface ; forte cohésion : un module, une responsabilité ; séparation des responsabilités : le routeur ne rédige pas, le rédacteur ne cherche pas, le planificateur ne rédige pas ; extensibilité et réutilisation : \code{email-core} ou \code{assistant-core} peuvent être repris seuls.

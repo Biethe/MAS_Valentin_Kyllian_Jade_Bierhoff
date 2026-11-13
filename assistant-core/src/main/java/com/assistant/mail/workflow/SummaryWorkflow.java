@@ -56,6 +56,12 @@ public final class SummaryWorkflow {
             clear(checklist);
             mark(checklist, body);
         }
+        String withFocus = keepNamedDates(brief, body, lengthLimit(brief));
+        if (!withFocus.equals(body)) {
+            body = withFocus;
+            clear(checklist);
+            mark(checklist, body);
+        }
         Summary summary = new Summary();
         summary.setBody(body);
         summary.setInformation(covered(brief, checklist));
@@ -77,6 +83,34 @@ public final class SummaryWorkflow {
         for (var email : brief.getEmails()) source += words(email.getBody());
         if (source == 0) for (var fact : brief.getFacts()) source += words(fact.getBody());
         return source < 40 ? -1 : Math.max(20, source / 2 - 5);
+    }
+
+    private static final java.util.regex.Pattern DATE = java.util.regex.Pattern.compile(
+            "(?iu)\\b\\d{1,2}(?:er)?\\s+(janvier|f[eé]vrier|mars|avril|mai|juin|juillet|ao[uû]t|septembre|octobre|novembre|d[eé]cembre"
+                    + "|january|february|march|april|june|july|august|september|october|november|december)\\b");
+
+    /**
+     * A date the user wrote in the request must appear in the summary. When the summary left it out, the
+     * sentence of the sources that carries it is put first, and the rest is shortened to stay within the budget.
+     */
+    static String keepNamedDates(Brief brief, String body, int limit) {
+        var named = DATE.matcher(brief.getFocus());
+        String result = body;
+        while (named.find()) {
+            String date = named.group().toLowerCase(java.util.Locale.ROOT);
+            if (result.toLowerCase(java.util.Locale.ROOT).contains(date)) continue;
+            String sentence = null;
+            for (var email : brief.getEmails()) {
+                for (String candidate : email.getBody() == null ? new String[0] : email.getBody().split("(?<=[.!?])\\s+|\\n+")) {
+                    if (sentence == null && candidate.toLowerCase(java.util.Locale.ROOT).contains(date)) sentence = candidate.strip();
+                }
+            }
+            if (sentence == null) continue;
+            int room = limit > 0 ? Math.max(10, limit - words(sentence)) : Integer.MAX_VALUE;
+            String rest = limit > 0 && words(result) > room ? fit(result, room) : result;
+            result = sentence + " " + rest;
+        }
+        return result;
     }
 
     private static final java.util.regex.Pattern DETAIL = java.util.regex.Pattern.compile(

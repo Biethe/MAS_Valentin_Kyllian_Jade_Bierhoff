@@ -1,0 +1,43 @@
+\section{Contexte, fils de discussion et LLM local}
+
+\subsection{Gestion du contexte}
+\label{sec:contexte}
+
+Le contexte documentaire est \emph{par profil}. Le flux est le suivant :
+
+\begin{enumerate}
+  \item le destinataire du brouillon (pour une réponse : l'expéditeur du message) est identifié ;
+  \item sa \textbf{fiche de contact} (nom, rôle, organisation, notes, par exemple « préfère le vouvoiement ») est lue dans \code{recipients.json} ;
+  \item le \textbf{profil} est déduit du rôle donné par le planificateur, sinon du rôle de la fiche ; sans rôle connu, tous les profils sont interrogés ;
+  \item une recherche renvoie les \textbf{passages les plus proches} de la demande dans ce seul profil ;
+  \item fiche et passages sont ajoutés au brief sous forme de lignes \code{knowledge:}.
+\end{enumerate}
+
+La recherche (\code{ProfileRag}) découpe chaque fichier en passages d'environ 600 caractères, par paragraphes, et classe les passages par similarité cosinus entre vecteurs d'\emph{embeddings} locaux (modèle \code{all-minilm:22m} servi par Ollama, 22 millions de paramètres). Si le modèle d'embedding est absent ou en panne, la recherche retombe sur un simple recouvrement de mots normalisés (sans accents), sans interrompre la tâche. Seuls les $k=3$ meilleurs passages sont conservés.
+
+\textbf{Éviter d'envoyer trop de contexte.} Plusieurs mécanismes bornent la taille du prompt : (i) le RAG ne renvoie que $k=3$ passages de 600 caractères au plus ; (ii) le rédacteur ne reçoit que le brief, jamais la boîte entière ni la demande brute ; (iii) un message court (moins de 1200 caractères) voyage entier comme fait, un long message est réduit à des faits atomiques extraits par le modèle ; (iv) l'historique d'un fil est borné par \code{memory.max.entries} ; (v) la mémoire à long terme n'injecte qu'un nombre limité de règles ($\le 10$) par rôle.
+
+\textbf{Isolation.} Les contextes ne se mélangent pas : un résumé n'est jamais « pollué » par des passages de profil (un essai sans cette règle a produit un résumé des procédures administratives au lieu des mails, voir section~\ref{sec:exp}), et une défaillance de la source de connaissances ne bloque jamais la tâche.
+
+\subsection{Gestion des fils de discussion}
+
+\begin{itemize}
+  \item \textbf{Niveau~1} : \code{ConversationMemory} conserve, par identifiant de fil, les derniers échanges (fenêtre bornée) ; cet historique est envoyé à l'agent avec le message courant.
+  \item \textbf{Niveau~2} : quand la demande parle d'un « fil », d'une « conversation » ou d'un « échange », le planificateur lit \emph{tous les messages du fil} (\code{read\_thread}), du plus ancien au plus récent, et non le seul message trouvé par la recherche. Chaque résultat de recherche n'est qu'un extrait : il est ouvert en entier (\code{read\_mail}) avant l'extraction des faits.
+  \item \textbf{Réponses déjà générées ou envoyées} : les réponses validées par l'utilisateur alimentent la fiche du contact (\code{recordReply}) ; les brouillons créés sont tracés.
+\end{itemize}
+
+\subsection{Mémoire}
+
+Deux niveaux : la \emph{mémoire courte} (le fil en cours et les litiges de la tâche) et la \emph{mémoire longue} (\code{LongTermMemory}), faite de règles apprises (\code{MemoryRule}) à partir des débats entre un agent et son critique : quand le critique a raison, la leçon est mémorisée et réinjectée dans les prompts suivants du même rôle, un point d'extension (\code{LessonVeto}) permettant à l'utilisateur de refuser une leçon, non câblé dans les interfaces actuelles. Cette mémoire longue vit actuellement en mémoire vive (voir les limites).
+
+\subsection{Intégration du LLM local}
+
+\begin{itemize}
+  \item \textbf{Moteur} : Ollama, par son API HTTP locale (\code{/api/chat}, \code{/api/embed}), en mode non streaming, température 0 et graine fixe pour des résultats reproductibles. Aucune donnée ne quitte la machine.
+  \item \textbf{Indépendance au modèle} : le modèle n'est connu que par des \emph{ports} (\code{LLMClient} au niveau~1 ; un port par rôle au niveau~2). Changer de modèle est un paramètre (\code{--model}, \code{ASSISTANT\_MODEL} ou \code{llm.model}) ; un modèle absent est remplacé par le meilleur modèle installé qui suit bien les consignes, et le système le signale.
+  \item \textbf{Prompts courts et formats stricts} : chaque étape est une petite tâche à sortie structurée (type, requête, identifiants, faits), plus adaptée à un modèle de 4 milliards de paramètres qu'un prompt unique et long.
+  \item \textbf{Robustesse aux petits modèles} : un décorateur (\code{TolerantReplies}) corrige les écarts de \emph{format} courants (appel d'outil écrit \code{search\_mail("Ada")}, champs sur une ligne, gabarit recopié, identifiant nu) sans changer le \emph{contenu}. Des règles déterministes complètent le modèle quand il échoue (recherche par mots distinctifs de la demande, destinataire d'une réponse, routage par mots-clés).
+  \item \textbf{Modèles essayés} : \code{llama3.1:8b} (modèle de référence du benchmark) est trop lent sur notre machine (limite de 5 minutes par scénario dépassée) ; \code{llama3.2-abliterate:3b} ne suit pas le format demandé (il répond à la question au lieu de suivre le prompt) ; \code{qwen3-abliterated:4b} est le meilleur compromis testé et sert d'assistant et, pour les mesures présentées, de juge.
+  \item \textbf{Barrières} : le modèle ne peut jamais envoyer un e-mail, ni créer un brouillon vers une adresse qu'il a inventée (\code{ToolGate}, correction du destinataire d'une réponse).
+\end{itemize}

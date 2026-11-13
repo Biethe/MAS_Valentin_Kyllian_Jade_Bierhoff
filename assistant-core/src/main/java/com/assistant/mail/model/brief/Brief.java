@@ -26,6 +26,8 @@ public class Brief {
     private List<String> doNotFollow = new ArrayList<>();
     /** Background on the recipient and their profile (contact card, retrieved passages). Not part of the checklist. */
     private List<String> knowledge = new ArrayList<>();
+    /** The instruction this brief serves (what the user asked). The summarizer uses it to keep the dates the user named. */
+    private String focus = "";
 
     public Brief() {}
 
@@ -73,6 +75,9 @@ public class Brief {
 
     public List<String> getDoNotFollow() { return doNotFollow; }
     public void setDoNotFollow(List<String> doNotFollow) { this.doNotFollow = emptyIfNull(doNotFollow); }
+
+    public String getFocus() { return focus; }
+    public void setFocus(String focus) { this.focus = focus == null ? "" : focus; }
 
     public List<String> getKnowledge() { return knowledge; }
     public void setKnowledge(List<String> knowledge) { this.knowledge = emptyIfNull(knowledge); }

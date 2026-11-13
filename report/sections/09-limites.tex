@@ -1,0 +1,46 @@
+\section{Limites de la solution et améliorations possibles}
+\label{sec:limites}
+
+\subsection{Limites}
+
+\paragraph{Organisation et architecture.}
+\begin{itemize}
+  \item Les deux niveaux (routage par catégorie et planificateur) \emph{coexistent mais ne forment pas un pipeline unique} : le planificateur n'utilise pas les agents spécialisés de catégorie, et le routeur n'utilise pas le planificateur. Le pont (\code{PlannerBridge}) ne fait que partager la boîte aux lettres.
+  \item \code{EmailCategory} est une énumération : ajouter une catégorie demande de modifier cette énumération et les mots-clés de routage, ce qui contredit en partie l'objectif « ajouter un agent sans modifier l'application ».
+  \item Les prompts de \code{email-core} sont des fichiers texte empaquetés dans les ressources, ceux de \code{assistant-core} des constantes Java : l'utilisateur ne peut pas les modifier à l'exécution sans recompiler.
+\end{itemize}
+
+\paragraph{Interface.}
+L'interface web permet de voir la boîte, la catégorie choisie par le routeur, le résumé, le brouillon éditable, d'envoyer ou de rejeter, et de consulter les contacts. En revanche, elle \textbf{ne permet pas} de créer ou de modifier un agent, d'éditer son prompt système ni de lui associer des fichiers ; ces points de l'énoncé (section~10) ne sont pas couverts.
+
+\paragraph{Données et mémoire.}
+La mémoire longue (règles apprises) et les brouillons du niveau~2 sont en mémoire vive et perdus à l'arrêt ; l'apprentissage des préférences n'est donc pas durable.
+
+\paragraph{Modèles locaux.}
+Un modèle de 4 milliards de paramètres ne suit pas toujours le format des prompts, invente parfois un détail dans un résumé et laisse des éléments factices (« [Votre nom] »). Nous compensons par des corrections de format et des règles déterministes, mais ces filets de sécurité masquent la faiblesse du modèle plus qu'ils ne la suppriment. La latence est élevée (de l'ordre de 40 à 130 secondes par demande sur notre machine) ; le modèle de référence du benchmark (\code{llama3.1:8b}) dépasse la limite de 5 minutes par scénario sur ce matériel.
+
+\paragraph{Sécurité.}
+Le filtre d'injection (\code{InjectionGuard}) est à base de règles : il attrape les formes courantes (jetons de gabarit de conversation, « ignore les consignes précédentes », ordre de créer un brouillon vers une autre adresse), pas toutes ; il peut aussi, plus rarement, signaler à tort une phrase légitime.
+
+\paragraph{Évaluation.}
+Les mesures de la section~\ref{sec:exp} portent sur \emph{trois} des vingt scénarios du benchmark, une exécution chacun, avec un juge de petite taille ; elles ne permettent aucune conclusion statistique. Le benchmark complet avec le juge de référence n'a pas été exécuté. La comparaison avec une architecture à agent unique, suggérée comme extension, n'a pas été réalisée. La boîte IMAP réelle n'est pas exercée dans les expériences rapportées.
+
+\subsection{Avantages et limites de l'approche multi-agents (question 14)}
+
+\textbf{Avantages observés.} (i) \emph{Contrôle} : chaque étape est courte, à sortie structurée et vérifiable, ce qui permet d'insérer des barrières déterministes entre le modèle et l'effet (aucun outil d'envoi, destinataire contrôlé) ; (ii) \emph{traçabilité} : la trace indique l'étape fautive ; (iii) \emph{spécialisation} : prompts et contextes séparés, sans mélange d'informations entre profils ; (iv) \emph{robustesse} : une étape qui échoue est rattrapée localement sans refaire toute la tâche ; (v) \emph{testabilité} : chaque rôle se teste avec un modèle simulé.
+
+\textbf{Limites.} Les étapes multiplient les appels au modèle (donc la latence), la coordination ajoute de la complexité, et la qualité du résultat reste bornée par le modèle le plus faible de la chaîne. Une architecture simple à agent unique serait plus rapide ; l'intérêt du multi-agents ici est la fiabilité et le contrôle, pas la vitesse.
+
+\subsection{Améliorations possibles}
+\begin{itemize}
+  \item Fusionner les deux niveaux : le planificateur choisirait un agent spécialisé pour la rédaction.
+  \item Interface de création et d'édition d'agents, de prompts et de contextes ; répertoire de prompts externe (\code{prompts.dir}) lu à chaud.
+  \item Rendre la mémoire longue et les brouillons persistants, et brancher le droit de veto de l'utilisateur.
+  \item Remplacer l'énumération de catégories par des profils chargés depuis des fichiers de configuration.
+  \item Détection d'injection complétée par un classifieur ; tests d'attaque plus nombreux.
+  \item Exécuter les vingt scénarios avec le juge de référence, répéter les mesures (\code{--repeat}) et comparer agent unique et multi-agents.
+  \item Recherche de contexte améliorée (reclassement, métadonnées de date), et estimation de la confiance du routeur calibrée sur les retours.
+\end{itemize}
+
+\subsection{Automatisation plus poussée : risques et garde-fous}
+Un envoi automatique est possible à terme, mais seulement avec des garde-fous : seuil de confiance minimal, liste blanche de destinataires, validation humaine obligatoire dès qu'un message est en quarantaine ou contient un ordre suspect, journal d'audit immuable, limitation du débit, mode « simulation » préalable, et actions réversibles (brouillon plutôt qu'envoi). Le choix actuel (aucun outil d'envoi dans l'assistant) est la forme la plus sûre de ces garde-fous.

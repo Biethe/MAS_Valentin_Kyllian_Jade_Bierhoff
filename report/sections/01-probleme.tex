@@ -1,0 +1,29 @@
+\section{Problème étudié et objectifs}
+
+\subsection{Problème étudié}
+
+Un enseignant-chercheur reçoit des messages de natures très différentes : questions d'étudiants, demandes de collègues, courriers administratifs, échanges liés à un projet de recherche, messages de partenaires extérieurs. Une réponse pertinente ne dépend pas seulement du dernier message reçu, mais aussi de l'identité et du rôle de l'expéditeur, du fil de discussion, des échanges précédents, des documents de référence et des préférences de l'utilisateur.
+
+Ces messages contiennent des informations personnelles, administratives ou scientifiques non publiées. La contrainte centrale du projet est donc que \emph{toute génération de texte repose sur un modèle de langage exécuté localement}, afin de ne pas transmettre ces données à un service distant. Les modèles utilisables sur un ordinateur personnel sont toutefois moins capables que les très grands modèles distants.
+
+L'hypothèse étudiée est la suivante :
+
+\begin{quote}
+\emph{Une organisation multi-agents composée d'agents spécialisés permet-elle d'utiliser efficacement des LLM locaux de taille raisonnable pour produire des réponses adaptées à différents contextes professionnels ?}
+\end{quote}
+
+Plutôt que de demander à un unique modèle de traiter correctement toutes les situations, nous répartissons le travail entre des agents dotés chacun d'un rôle, d'un prompt système et d'un contexte propres, et entre des étapes courtes dont chacune est contrôlable (classer, chercher, lire, rédiger, vérifier).
+
+\subsection{Objectifs du système}
+
+Les objectifs, directement issus de l'énoncé, sont les suivants :
+\begin{itemize}
+  \item \textbf{Assister, pas envoyer.} Le système propose un brouillon ; l'utilisateur garde le contrôle final. Aucun composant de l'assistant ne sait envoyer un e-mail : les brouillons sont enregistrés, jamais émis.
+  \item \textbf{Router} chaque message vers l'agent le plus adapté et savoir se replier quand aucun ne convient.
+  \item \textbf{Spécialiser} les agents par prompt système et par contexte documentaire, modifiables sans toucher au code Java lorsque c'est possible.
+  \item \textbf{Gérer le contexte et les fils de discussion} en limitant la quantité d'information envoyée au LLM.
+  \item \textbf{Rester indépendant du modèle} : remplacer un LLM local par un autre sans réécrire le framework.
+  \item \textbf{Être extensible et mesurable} : ajouter un agent, une stratégie de routage ou une mémoire facilement, et comparer des configurations sur un jeu de scénarios.
+\end{itemize}
+
+Nous avons en outre retenu trois exigences que l'énoncé ne détaille pas mais qui découlent du contexte confidentiel : \emph{(i)} un message est une donnée et non un ordre (défense contre l'injection de consignes), \emph{(ii)} les brouillons ne partent qu'après validation explicite, \emph{(iii)} chaque décision doit pouvoir être retracée.

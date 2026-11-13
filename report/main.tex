@@ -1,0 +1,101 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[french]{babel}
+\usepackage[margin=2.3cm]{geometry}
+\usepackage{microtype}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{longtable}
+\usepackage{caption}
+\usepackage{fancyhdr}
+\usepackage{listings}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,shapes.geometric,fit,calc}
+\usepackage[colorlinks=true,linkcolor=blue!50!black,urlcolor=blue!50!black,citecolor=blue!50!black]{hyperref}
+
+\definecolor{todo}{HTML}{B00020}
+\newcommand{\afaire}[1]{\textcolor{todo}{[à compléter : #1]}}
+\newcommand{\code}[1]{\texttt{#1}}
+
+\lstset{
+  basicstyle=\ttfamily\footnotesize,
+  breaklines=true,
+  frame=single,
+  framerule=0.3pt,
+  columns=fullflexible,
+  keepspaces=true,
+  upquote=true,
+  literate={é}{{\'e}}1 {è}{{\`e}}1 {à}{{\`a}}1 {ç}{{\c c}}1 {ô}{{\^o}}1 {î}{{\^i}}1 {ê}{{\^e}}1
+}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.55em}
+\renewcommand{\arraystretch}{1.15}
+\captionsetup{font=small,labelfont=bf}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small Systèmes multi-agents --- M2 Intelligence Artificielle}
+\fancyhead[R]{\small Assistant multi-agents de réponse aux e-mails}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.3pt}
+
+\title{\textbf{Conception d'un système multi-agents\\de réponse automatique aux e-mails\\avec des LLM exécutés localement}}
+\author{Master 2 Intelligence Artificielle --- Cours de Systèmes Multi-Agents}
+\date{\today}
+
+\begin{document}
+
+\begin{titlepage}
+\centering
+\vspace*{2cm}
+{\large Master 2 Intelligence Artificielle\\Cours : Systèmes Multi-Agents\par}
+\vspace{1.5cm}
+{\LARGE\bfseries Conception d'un système multi-agents\\de réponse automatique aux e-mails\\avec des LLM exécutés localement\par}
+\vspace{1.5cm}
+{\large Rapport de projet\par}
+\vspace{2cm}
+
+\textbf{Membres du groupe}\\[0.8em]
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{Prénom NOM} & \textbf{Numéro étudiant}\\
+\midrule
+Valentin \afaire{NOM} & \afaire{n° étudiant}\\
+Kyllian \afaire{NOM} & \afaire{n° étudiant}\\
+Jade \afaire{NOM} & \afaire{n° étudiant}\\
+Théolien BIERHOFF & \afaire{n° étudiant}\\
+\bottomrule
+\end{tabular}
+
+\vspace{0.8cm}
+{\small Un seul étudiant du groupe dépose le projet, conformément à la consigne : \afaire{nom du déposant}.}
+
+\vfill
+{\small Dépôt : \url{https://github.com/Biethe/MAS_Valentin_Kyllian_Jade_Bierhoff}\\
+(branche \code{merge-email-multiagent})\par}
+\vspace{0.5cm}
+{\small \today}
+\end{titlepage}
+
+\tableofcontents
+\newpage
+
+\input{sections/01-probleme}
+\input{sections/02-organisation}
+\input{sections/03-architecture}
+\input{sections/04-agents-routage}
+\input{sections/05-contexte-fils-llm}
+\input{sections/06-patterns}
+\input{sections/07-questions}
+\input{sections/08-experiences}
+\input{sections/09-limites}
+\input{sections/10-contributions}
+
+\end{document}

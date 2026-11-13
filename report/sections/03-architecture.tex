@@ -1,0 +1,160 @@
+\section{Architecture globale}
+\label{sec:archi}
+
+\subsection{Modules et dépendances}
+
+Le projet est un dépôt Maven multi-modules. Chaque module a une responsabilité unique et les dépendances vont dans un seul sens.
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[
+  mod/.style={draw,rounded corners=2pt,align=center,font=\small,minimum width=3.1cm,minimum height=1.0cm,fill=blue!6},
+  arr/.style={-{Stealth[length=2mm]},thick}
+]
+  \node[mod] (core) {\textbf{email-core}\\domaine, agents, routage,\\LLM, contexte, mémoire};
+  \node[mod,right=1.2cm of core] (mail) {\textbf{email-mail}\\adaptateurs\\IMAP / SMTP};
+  \node[mod,right=1.2cm of mail] (app) {\textbf{email-app}\\racine de composition,\\API HTTP, interface web};
+  \node[mod,below=1.5cm of app,fill=green!8] (ac) {\textbf{assistant-core}\\Planner, Writer, Summary,\\RAG, MCP, CLI, web};
+  \node[mod,left=2.6cm of ac,fill=orange!10] (bench) {\textbf{benchmark}\\boîte fictive MCP,\\notation par couche};
+  \draw[arr] (mail) -- (core);
+  \draw[arr] (app) -- (mail);
+  \draw[arr] (app) to[bend right=15] (core);
+  \draw[arr] (app) -- node[right,font=\scriptsize]{\code{PlannerBridge}} (ac);
+  \draw[arr,dashed] (bench) -- node[above,font=\scriptsize]{MCP, trace} (ac);
+\end{tikzpicture}
+\caption{Modules du dépôt. Une flèche signifie « dépend de ».}
+\end{figure}
+
+\begin{itemize}
+  \item \code{email-core} ne connaît ni le transport de messages ni l'interface : il ne dépend d'aucun module du projet.
+  \item \code{email-mail} contient les adaptateurs IMAP et SMTP et ne connaît pas le web.
+  \item \code{email-app} est la \emph{racine de composition} : \code{AppContext} est le seul endroit qui choisit les classes concrètes ; tout le reste reçoit des interfaces par constructeur.
+  \item \code{assistant-core} est indépendant d'\code{email-core} (autre paquetage \code{com.assistant.mail}, Java 21) ; il offre un terminal, un serveur HTTP et le point d'entrée du benchmark.
+  \item \code{benchmark} évalue n'importe quel système respectant un contrat de trace ; il ne dépend pas de l'assistant.
+\end{itemize}
+
+Trois interfaces de lancement partagent le même cœur : un terminal seul (\code{./run.sh cli}), un chat web (\code{./run.sh web}) et l'application web complète (\code{./run.sh app}).
+
+\subsection{Classes et interfaces importantes}
+
+{\small
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{4.5cm}>{\raggedright\arraybackslash}p{2.2cm}>{\raggedright\arraybackslash}p{8.2cm}@{}}
+\caption{Principales classes et interfaces.}\\
+\toprule
+\textbf{Élément} & \textbf{Module} & \textbf{Rôle}\\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Élément} & \textbf{Module} & \textbf{Rôle}\\
+\midrule
+\endhead
+\bottomrule
+\endfoot
+\code{Agent}, \code{AbstractAgent} & email-core & Contrat d'un agent ; \code{handle} fixe l'algorithme (contexte, prompt, mémoire du fil, appel du LLM), les sous-classes fournissent leur catégorie et leur prompt.\\
+\code{RouterAgent} & email-core & Coordinateur : classe via une \code{RouterStrategy}, délègue via l'\code{AgentRegistry}, bascule sur \code{GenericAgent} si la confiance est insuffisante.\\
+\code{RouterStrategy} & email-core & Port de routage : \code{Keyword}, \code{LLM}, \code{Hybrid}, \code{Feedback}.\\
+\code{AgentRegistry}, \code{AgentFactory} & email-core & Enregistrement et création des agents par catégorie.\\
+\code{LLMClient} & email-core & Port vers le modèle ; adaptateurs \code{OllamaClient} et \code{MockLLMClient}.\\
+\code{ContextProvider} & email-core & Port du contexte : \code{FileContextProvider} et \code{RagContextProvider}.\\
+\code{RecipientKnowledgeBase} & email-core & Fiches par contact, injectées dans les prompts, enrichies par les réponses validées.\\
+\code{ConversationMemory} & email-core & Historique borné par fil.\\
+\code{EmailAssistantSystem} & email-core & Façade d'orchestration (sécurité, routage, agent, mémoire).\\
+\code{AppContext}, \code{WebServer} & email-app & Racine de composition et API HTTP.\\
+\midrule
+\code{Planner} & assistant-core & Découpe, route l'instruction, cherche, sélectionne, lit, construit brief et checklist.\\
+\code{Turn} & assistant-core & Façade d'un message utilisateur : Planner, puis rédacteur ou résumeur par brief.\\
+\code{WriterWorkflow}, \code{SummaryWorkflow} & assistant-core & Rédaction et résumé avec marquage de checklist, débat critique et réécriture.\\
+\code{ToolGate} & assistant-core & Barrière déterministe : refuse tout appel d'outil hors liste ou mal formé.\\
+\code{InjectionGuard} & assistant-core & Retire des messages les ordres destinés au modèle et les signale.\\
+\code{MailClientMcp}, \code{MailboxClient} & assistant-core & Port de la boîte aux lettres et adaptateur MCP (stdio).\\
+\code{PlannerAgentClient}, \code{DrafterAgentClient}, \code{SummarizerAgentClient} & assistant-core & Ports du modèle, un par rôle ; \code{OllamaChat} les implémente tous.\\
+\code{KnowledgeSource}, \code{ProfileKnowledge}, \code{ProfileRag}, \code{ContactBook} & assistant-core & Contexte par profil (RAG) et fiches contact.\\
+\code{TolerantReplies} & assistant-core & Décorateur de modèle qui corrige les écarts de format.\\
+\code{Assistant} & assistant-core & Façade unique pour le terminal, le web et le benchmark.\\
+\end{longtable}}
+
+\subsection{Diagramme de classes simplifié (ports et adaptateurs)}
+
+La figure~\ref{fig:classes} montre les ports du niveau~1 et leurs implémentations : le modèle, le routage et le contexte sont des interfaces, et chaque agent n'en connaît que le contrat.
+
+\begin{figure}[ht]
+\centering
+\resizebox{0.95\textwidth}{!}{%
+\begin{tikzpicture}[
+  cls/.style={draw,align=center,font=\scriptsize,minimum width=2.7cm,minimum height=0.8cm,fill=blue!5},
+  itf/.style={cls,fill=yellow!15,dashed},
+  inh/.style={-{Triangle[open,length=2.5mm]},thick},
+  use/.style={-{Stealth[length=2mm]},thick,gray!70!black}
+]
+  \node[itf] (rs) at (0,0) {«interface»\\RouterStrategy};
+  \node[cls] (kw) at (-3.2,-2.0) {Keyword\\RouterStrategy};
+  \node[cls] (llmr) at (0,-2.0) {LLMRouter\\Strategy};
+  \node[cls] (hy) at (3.2,-2.0) {Hybrid\\RouterStrategy};
+  \draw[inh] (kw) -- (rs); \draw[inh] (llmr) -- (rs); \draw[inh] (hy) -- (rs);
+
+  \node[cls] (ra) at (5.6,0) {RouterAgent};
+  \node[itf] (ag) at (9.2,0) {«interface»\\Agent};
+  \node[cls] (aa) at (9.2,-2.0) {AbstractAgent\\(template method)};
+  \node[cls] (sp) at (9.2,-4.0) {Student, Teacher,\\Administration,\\Research, Generic};
+  \draw[use] (ra) -- node[above,font=\tiny]{délègue} (ag);
+  \draw[use] (ra) -- (rs);
+  \draw[inh] (aa) -- (ag);
+  \draw[inh] (sp) -- (aa);
+
+  \node[itf] (llm) at (4.6,-5.2) {«interface»\\LLMClient};
+  \node[cls] (ol) at (2.8,-7.0) {OllamaClient};
+  \node[cls] (mock) at (6.4,-7.0) {MockLLMClient};
+  \draw[inh] (ol) -- (llm); \draw[inh] (mock) -- (llm);
+  \draw[use] (aa.west) to[bend right=12] (llm.north east);
+
+  \node[itf] (ctxp) at (-1.2,-5.2) {«interface»\\ContextProvider};
+  \node[cls] (rag) at (-1.2,-7.0) {RagContext\\Provider};
+  \draw[inh] (rag) -- (ctxp);
+  \draw[use] (aa.west) to[bend right=22] (ctxp.north east);
+\end{tikzpicture}}
+\caption{Diagramme de classes simplifié du niveau~1 : le modèle, le routage et le contexte sont des ports remplaçables.}
+\label{fig:classes}
+\end{figure}
+
+\subsection{Mécanismes de communication entre agents}
+
+Les agents ne partagent pas d'état global ; ils communiquent par des \emph{objets de transfert} typés :
+
+\begin{itemize}
+  \item \textbf{Niveau~1} : \code{EmailMessage} en entrée, \code{RoutingDecision} (catégorie, confiance, raison) et \code{AgentResponse} (proposition de réponse) en sortie. Le \code{RouterAgent} appelle l'agent choisi par l'intermédiaire de l'\code{AgentRegistry}.
+  \item \textbf{Niveau~2} : \code{Request} $\rightarrow$ \code{Instruction} $\rightarrow$ \code{Brief} $\rightarrow$ \code{Draft} ou \code{Summary}. Le \code{Brief} est le \emph{contrat} entre le planificateur et le rédacteur : destinataires, langue, ton, structure, faits, consignes à ne pas suivre et lignes de connaissance. Le rédacteur ne voit jamais la demande de l'utilisateur, seulement le brief ; il ne peut donc pas être détourné par elle.
+  \item \textbf{Outils} : la boîte aux lettres est appelée par le protocole MCP ; les appels passent par \code{ToolGate}, qui refuse un outil inconnu (par exemple \code{send}) avant tout effet.
+  \item \textbf{Critique} : un \code{Dispute} (argument du critique, réponse de l'agent, vainqueur, leçon) est la forme que prend la négociation entre un agent et son critique.
+\end{itemize}
+
+\begin{figure}[ht]
+\centering
+\resizebox{0.97\textwidth}{!}{%
+\begin{tikzpicture}[
+  life/.style={thick,dashed,gray},
+  act/.style={draw,align=center,font=\small,minimum width=2.2cm,fill=blue!6},
+  msg/.style={-{Stealth[length=2mm]},thick},
+  lab/.style={font=\scriptsize,fill=white,inner sep=1.2pt,midway}
+]
+  \foreach \x/\n in {0/Utilisateur,3.2/Planner,6.6/Boîte (MCP),10.0/Writer,13.2/Critic} {
+    \node[act] at (\x,0) {\n};
+    \draw[life] (\x,-0.4) -- (\x,-11.4);
+  }
+  \draw[msg] (0,-1.0) -- node[lab]{demande} (3.2,-1.0);
+  \draw[msg] (3.2,-2.0) -- node[lab]{search\_mail} (6.6,-2.0);
+  \draw[msg] (6.6,-2.8) -- node[lab]{extraits} (3.2,-2.8);
+  \draw[msg] (3.2,-3.6) -- node[lab]{read\_mail} (6.6,-3.6);
+  \draw[msg] (6.6,-4.4) -- node[lab]{message complet} (3.2,-4.4);
+  \draw[msg,red!60!black] (3.2,-5.2) -- ++(0.9,0) -- ++(0,-0.6) -- ++(-0.9,0);
+  \node[font=\scriptsize,red!60!black,anchor=west] at (4.2,-5.5) {filtre d'injection};
+  \draw[msg] (3.2,-6.6) -- node[lab]{brief + checklist} (10.0,-6.6);
+  \draw[msg] (10.0,-7.4) -- node[lab]{brouillon} (13.2,-7.4);
+  \draw[msg] (13.2,-8.2) -- node[lab]{écarts, leçon} (10.0,-8.2);
+  \draw[msg] (10.0,-9.0) -- ++(0.9,0) -- ++(0,-0.6) -- ++(-0.9,0);
+  \node[font=\scriptsize,anchor=west] at (11.0,-9.3) {réécriture};
+  \draw[msg] (10.0,-10.2) -- node[lab]{create\_draft} (6.6,-10.2);
+  \draw[msg] (6.6,-10.8) -- node[lab]{id du brouillon} (10.0,-10.8);
+  \draw[msg] (10.0,-11.4) -- node[lab]{brouillon, avertissements} (0,-11.4);
+\end{tikzpicture}}
+\caption{Diagramme de séquence d'une demande de réponse (niveau~2). L'utilisateur valide ensuite le brouillon ; il n'est jamais envoyé automatiquement.}
+\end{figure}

@@ -1,0 +1,34 @@
+\section{Spécialisation des agents et stratégie de routage}
+
+\subsection{Spécialisation : prompt système et contexte}
+
+Conformément à l'énoncé, la spécialisation d'un agent couvre deux dimensions.
+
+\textbf{Prompt système.} Dans \code{email-core}, chaque agent charge son prompt depuis un fichier Markdown (\code{student.md}, \code{teacher.md}, \code{administration.md}, \code{research.md}, \code{generic.md}, \code{summarizer.md}), avec une variante française (\code{*\_fr.md}) choisie selon la langue de l'interface. Le prompt définit le rôle, le ton, les informations à prendre en compte et à ne jamais divulguer, et la structure de la réponse. Le \code{PromptRepository} est un dépôt : l'agent ne connaît que le nom du prompt, jamais son emplacement. Les prompts sont des fichiers texte, donc modifiables sans toucher au code Java ; en revanche ils sont aujourd'hui \emph{empaquetés dans les ressources} et nécessitent une recompilation (voir les limites).
+
+Dans \code{assistant-core}, les prompts de chaque rôle (découpage, routage, outils, lecture, brief, critique, checklist, rédaction, résumé) sont des constantes Java regroupées par rôle (\code{PlannerSystemPrompt}, \code{DrafterSystemPrompt}, \code{SummarizerSystemPrompt}). Ils sont courts, de format de sortie strict (blocs \code{clé:\textbackslash{}nvaleur}) et testables, mais ils ne sont pas éditables par l'utilisateur sans recompiler.
+
+\textbf{Contexte.} Le contexte est propre à chaque profil : le dossier \code{context/} contient un sous-dossier par profil (\code{student/}, \code{teacher/}, \code{administration/}, \code{research/}) rempli de fichiers texte que l'utilisateur modifie directement. À cela s'ajoutent les fiches de contact (\code{recipients.json}) et l'historique du fil. Deux agents n'ont donc pas accès aux mêmes informations : le résumeur ne reçoit, par construction, que la fiche du contact et jamais les passages de profil (voir section~\ref{sec:contexte}).
+
+\subsection{Stratégies de routage (niveau 1)}
+
+Le routage est un \emph{port} (\code{RouterStrategy}) à quatre implémentations interchangeables, choisies par configuration (\code{routing.strategy}) :
+
+\begin{description}
+  \item[Mots-clés] déterministe, jamais dépendant du LLM. Il évalue le sujet et le corps contre des listes de mots (cours, projet, administration, collègue, spam, notification), chacune associée à une confiance fixe ; en cas de correspondances multiples, \emph{la règle de plus forte confiance l'emporte}. Sous le seuil (\code{routing.threshold}, 0{,}5), il renvoie \code{GENERIC}.
+  \item[LLM] le modèle choisit une catégorie et une confiance ; en cas d'indisponibilité ou d'incertitude (sous \code{routing.llm.confidence}, 0{,}6), il retombe sur les mots-clés.
+  \item[Hybride] mots-clés d'abord quand la confiance est suffisante et que la catégorie n'est pas \code{GENERIC} ; sinon le LLM tranche. Le coût du LLM n'est payé que sur les cas difficiles.
+  \item[Feedback] décorateur qui abaisse la confiance d'une catégorie souvent rejetée par l'utilisateur (taux de rejet $\ge 50\,\%$ : $-0{,}2$), ce qui fait basculer l'hybride vers le LLM pour les catégories fragiles.
+\end{description}
+
+La décision est un objet \code{RoutingDecision} (catégorie, confiance, \emph{raison}) : le choix de l'agent est donc explicable et affiché à l'utilisateur. Le routage ne s'appuie pas uniquement sur l'adresse de l'expéditeur, puisqu'une même personne peut écrire dans des contextes différents.
+
+\textbf{Plusieurs agents conviennent.} Pour les mots-clés, la priorité fixe des règles départage ; pour le LLM, c'est la catégorie renvoyée avec la confiance la plus haute ; le cas ambigu est mesuré dans les expériences (section~\ref{sec:exp}).
+
+\textbf{Aucun agent ne convient.} Sous le seuil, le \code{RouterAgent} délègue à \code{GenericAgent}, dont le prompt est volontairement prudent.
+
+\subsection{Routage par instruction (niveau 2)}
+
+Le planificateur route une \emph{instruction}, pas un message : il en détermine le type (\code{REPLY}, \code{COMPOSE}, \code{SUMMARIZE}, \code{CHAT}, \code{OUTOFSCOPE}) et si elle est assez claire pour être exécutée. Trois issues ne produisent aucun brouillon : une demande hors périmètre est refusée, une salutation reçoit une réponse courte, et une demande ambiguë, sans message correspondant ou à laquelle il manque un fait donne lieu à une \emph{question posée à l'utilisateur} (\code{UNCLEAR}, \code{NO\_MAIL}, \code{MISSING\_FACT}) plutôt qu'à une invention.
+
+Quand le modèle ne produit pas une réponse exploitable (par exemple un refus au lieu du type), un routage de repli \emph{par mots-clés} décide à sa place. Le modèle reste premier, la règle déterministe est un filet de sécurité.

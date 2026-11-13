@@ -111,4 +111,19 @@ class ReadInFullTest {
         assertTrue(fitted.split("\\s+").length <= 25);
         assertEquals(5, SummaryWorkflow.fit("un deux trois quatre cinq six sept huit", 5).split(" ").length);
     }
+
+    @Test void aDateNamedInTheRequestIsKeptInTheSummary() {
+        com.assistant.mail.model.brief.Brief brief = new com.assistant.mail.model.brief.Brief();
+        brief.setFocus("Résume-moi le fil sur la journée d'étude du 4 décembre.");
+        Email mail = new Email();
+        mail.setBody("Bonjour. Nous organisons la journée d'étude du vendredi 4 décembre. Merci pour les croissants.");
+        brief.setEmails(new ArrayList<>(List.of(mail)));
+        String kept = SummaryWorkflow.keepNamedDates(brief, "Le programme est attendu le 20 novembre.", 40);
+        assertTrue(kept.startsWith("Nous organisons la journée d'étude du vendredi 4 décembre."), kept);
+        assertTrue(kept.contains("20 novembre"));
+        String already = "La journée d'étude a lieu le 4 décembre.";
+        assertEquals(already, SummaryWorkflow.keepNamedDates(brief, already, 40));
+        brief.setFocus("Résume le mail");
+        assertEquals("x", SummaryWorkflow.keepNamedDates(brief, "x", 40));
+    }
 }

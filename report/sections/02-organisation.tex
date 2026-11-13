@@ -1,0 +1,67 @@
+\section{Organisation multi-agents retenue}
+\label{sec:orga}
+
+Le dépôt réunit deux réalisations complémentaires, développées en parallèle puis fusionnées. Nous les présentons comme deux \emph{niveaux} de la même organisation.
+
+\subsection{Niveau 1 : routage par catégorie (module \code{email-multiagent})}
+
+Ce niveau reprend le scénario minimal de l'énoncé : \emph{e-mail reçu $\rightarrow$ agent de routage $\rightarrow$ agent spécialisé $\rightarrow$ LLM local $\rightarrow$ agent de routage $\rightarrow$ utilisateur}. Les agents sont :
+
+\begin{description}
+  \item[\code{SecurityAgent}] premier filtre : détecte les injections de consignes et les demandes de données sensibles ; un message suspect est mis en quarantaine avant qu'aucun autre agent ne le voie.
+  \item[\code{RouterAgent}] coordinateur. Il ne rédige jamais : il classe le message (\code{STUDENT}, \code{TEACHER}, \code{ADMINISTRATION}, \code{RESEARCH}, \code{GENERIC}, \code{SPAM}, \code{NO\_REPLY}) avec un niveau de confiance, puis délègue.
+  \item[Agents spécialisés] \code{StudentAgent}, \code{TeacherAgent}, \code{AdministrationAgent}, \code{ResearchAgent} (dédié au projet de recherche) et \code{GenericAgent} (repli). Chacun possède son prompt système et son contexte documentaire.
+  \item[\code{SummaryAgent}] résume le message, décide s'il appelle une réponse et pré-génère un brouillon.
+\end{description}
+
+\begin{figure}[ht]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[
+  box/.style={draw,rounded corners=2pt,minimum height=0.8cm,minimum width=2.6cm,align=center,font=\small,fill=blue!6},
+  agent/.style={box,fill=green!8},
+  ext/.style={box,fill=gray!12},
+  arr/.style={-{Stealth[length=2mm]},thick}
+]
+  \node[ext] (mail) at (0,0) {E-mail reçu\\(IMAP)};
+  \node[agent] (sec) at (3.4,0) {SecurityAgent};
+  \node[agent] (router) at (7.0,0) {RouterAgent\\(stratégie)};
+  \node[agent] (stud) at (11.2,2.6) {StudentAgent};
+  \node[agent] (teach) at (11.2,1.3) {TeacherAgent};
+  \node[agent] (adm) at (11.2,0) {AdministrationAgent};
+  \node[agent] (res) at (11.2,-1.3) {ResearchAgent};
+  \node[agent] (gen) at (11.2,-2.6) {GenericAgent};
+  \node[agent] (sum) at (15.4,0) {SummaryAgent};
+  \node[ext] (ctx) at (15.4,2.6) {Contexte par profil\\+ fiches contact};
+  \node[ext] (llm) at (19.0,0) {LLM local\\(Ollama)};
+  \node[ext] (user) at (15.4,-2.6) {Utilisateur\\(valide / rejette)};
+
+  \draw[arr] (mail) -- (sec);
+  \draw[arr] (sec) -- node[above,font=\scriptsize]{sain} (router);
+  \foreach \a in {stud,teach,adm,res,gen} {\draw[arr] (router.east) -- (\a.west);}
+  \foreach \a in {stud,teach,adm,res,gen} {\draw[arr,gray] (\a.east) -- (sum.west);}
+  \draw[arr] (sum) -- (user);
+  \draw[arr,dashed] (sum) -- (llm);
+  \draw[arr,dashed] (ctx) -- (sum);
+  \draw[arr,red!60!black] (sec.south) -- ++(0,-1.2) node[below,font=\scriptsize,align=center]{quarantaine};
+\end{tikzpicture}}
+\caption{Niveau 1 : organisation des agents de routage et de spécialisation.}
+\end{figure}
+
+\subsection{Niveau 2 : planificateur et flux de travail (module \code{assistant-core})}
+
+Ce niveau traite une \emph{instruction de l'utilisateur} (« Réponds à Ada pour confirmer la réunion », « Résume le fil sur la journée d'étude ») plutôt qu'un message entrant. Un planificateur la décompose, trouve les messages utiles dans la boîte aux lettres, en extrait les faits et construit un \emph{brief} que consomme un rédacteur ou un résumeur. Les rôles sont :
+
+\begin{description}
+  \item[Planner] découpe la demande en instructions atomiques, en détermine le type (\code{REPLY}, \code{COMPOSE}, \code{SUMMARIZE}, \code{CHAT}, \code{OUTOFSCOPE}), pilote la recherche dans la boîte, sélectionne les messages, extrait les faits, construit le brief et la checklist, et pose une question à l'utilisateur quand la demande est ambiguë ou qu'un message manque.
+  \item[Writer (rédacteur)] produit le brouillon à partir du brief ; un brouillon invalide est refusé par une barrière d'outils (\code{ToolGate}).
+  \item[Summarizer (résumeur)] produit un résumé fidèle et plus court que ses sources.
+  \item[Critic] agent critique interne à chaque rôle : il confronte le résultat à la checklist, un débat (argument, jugement) décide qui a raison et une \emph{leçon} est mémorisée.
+  \item[Mailbox] la boîte aux lettres, vue comme un serveur d'outils MCP (\code{search\_mail}, \code{read\_mail}, \code{read\_thread}, \code{create\_draft}) --- il n'existe volontairement aucun outil d'envoi.
+\end{description}
+
+\subsection{Pourquoi deux niveaux ? Justification et état de l'intégration}
+
+Le niveau~1 répond à la question « à quel \emph{type d'interlocuteur} ai-je affaire ? » : c'est un routage par catégorie, utile pour un flux entrant d'e-mails. Le niveau~2 répond à « que \emph{veut} l'utilisateur et de quels messages a-t-on besoin ? » : c'est de la planification d'instructions. Les deux sont utiles et se complètent, mais ils ne sont pas fusionnés en un unique pipeline : dans l'application web, le planificateur est exposé à côté du routeur (page \code{/assistant.html}) et lit la même boîte IMAP via un pont (\code{PlannerBridge}). Nous en discutons les conséquences en section~\ref{sec:limites}.
+
+Cette organisation est plus riche que le minimum demandé ; conformément à l'énoncé, nous justifions chaque extension : l'agent de sécurité (la confidentialité est la contrainte centrale), l'agent critique (compenser la faiblesse des petits modèles par une vérification structurée) et la mémoire (apprendre les préférences de l'utilisateur).

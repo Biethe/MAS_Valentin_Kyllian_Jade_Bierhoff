@@ -1,0 +1,21 @@
+\section{Réponses aux questions de conception}
+\label{sec:questions}
+
+Cette section répond, dans l'ordre, aux quatorze questions de la section~14 de l'énoncé.
+
+\begin{enumerate}
+  \item \textbf{Qu'est-ce qu'un agent dans notre architecture ?} Un composant doté d'un rôle, d'un prompt, d'un contexte et d'une interface étroite : au niveau~1, un objet \code{Agent} spécialisé par catégorie ; au niveau~2, un rôle (Planner, Writer, Summarizer, Critic) dont l'entrée est un brief ou une instruction.
+  \item \textbf{Quelles sont ses responsabilités ?} Une seule : le routeur classe, le spécialisé rédige pour une catégorie, le résumeur résume, le critique vérifie, la barrière d'outils contrôle.
+  \item \textbf{Quelle information possède-t-il ?} Son prompt, son contexte de profil (RAG), la fiche du contact et l'historique du fil pour les agents de niveau~1 ; uniquement le brief pour le rédacteur.
+  \item \textbf{Comment communiquent-ils ?} Par objets typés (\code{RoutingDecision}, \code{AgentResponse}, \code{Brief}, \code{Draft}) et par appels d'outils MCP, sans état partagé (section~\ref{sec:archi}).
+  \item \textbf{Comment le routeur détermine-t-il l'agent ?} Par une stratégie interchangeable (mots-clés, LLM, hybride, pondérée par le retour utilisateur) avec une confiance et une raison.
+  \item \textbf{Plusieurs agents conviennent ?} La règle de plus forte confiance l'emporte (mots-clés) ou le LLM tranche (hybride) ; le cas ambigu est mesuré.
+  \item \textbf{Aucun agent ne convient ?} Repli sur \code{GenericAgent} au niveau~1 ; au niveau~2, question posée à l'utilisateur, refus d'une demande hors périmètre.
+  \item \textbf{Comment les contextes sont-ils représentés ?} Fichiers texte par profil, découpés en passages et indexés par embeddings ; fiches de contact JSON ; historique par fil ; règles apprises.
+  \item \textbf{Comment l'historique d'une conversation est-il géré ?} Mémoire bornée par fil au niveau~1 ; lecture de tous les messages du fil à la demande au niveau~2.
+  \item \textbf{Comment éviter d'envoyer trop de contexte ?} Recherche des $k=3$ passages pertinents d'un seul profil, brief au lieu de la boîte entière, faits atomiques, fenêtres bornées, règles limitées à dix (section~\ref{sec:contexte}).
+  \item \textbf{Comment ajouter un agent sans modifier l'application ?} Écrire une sous-classe de \code{AbstractAgent}, l'enregistrer dans l'\code{AgentRegistry}, ajouter son prompt et son dossier de contexte ; le routeur et l'interface n'ont pas à changer (hors liste de catégories et mots-clés).
+  \item \textbf{Comment changer le LLM ?} Un paramètre de configuration ; les agents ne connaissent que \code{LLMClient} ou les ports de rôle.
+  \item \textbf{Quelles données doivent être persistantes ?} Persistantes aujourd'hui : configuration, prompts, documents de contexte, fiches de contact, journal d'audit et retours utilisateur (JSONL). À rendre persistantes : règles de la mémoire longue et brouillons (actuellement en mémoire vive).
+  \item \textbf{Avantages et limites de l'approche multi-agents ?} Voir la section~\ref{sec:limites} : gains de contrôle, de traçabilité et de robustesse avec de petits modèles ; coût en latence, en complexité et en étapes de vérification.
+\end{enumerate}
