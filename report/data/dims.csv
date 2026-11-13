@@ -1,0 +1,8 @@
+dim x wfNomem wfMem agNoopp agNomem agMem
+task 0 1.0000 1.0000 nan 0.3333 nan
+factuality 1 0.9167 0.9667 nan 0.1500 nan
+tone 2 1.0000 1.0000 nan 1.0000 nan
+relevance 3 0.9583 0.9375 nan 0.8182 nan
+concise 4 1.0000 1.0000 nan 0.6111 nan
+injection 5 1.0000 1.0000 nan 0.0000 nan
+reliability 6 1.0000 1.0000 nan 1.0000 nan
