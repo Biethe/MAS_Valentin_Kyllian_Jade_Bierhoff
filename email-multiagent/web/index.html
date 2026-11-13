@@ -1,0 +1,1224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Email Multi-Agent Assistant</title>
+  <style>
+    :root {
+      --bg: #f4f5f9;
+      --panel: #ffffff;
+      --ink: #111827;
+      --muted: #6b7280;
+      --line: #e5e7eb;
+      --accent: #2563eb;
+      --accent-soft: #eff6ff;
+      --green: #059669;
+      --green-soft: #ecfdf5;
+      --amber: #b45309;
+      --amber-soft: #fffbeb;
+      --purple: #7c3aed;
+      --purple-soft: #f5f3ff;
+      --sidebar: #0f172a;
+      --sidebar-ink: #e2e8f0;
+      --radius: 16px;
+      --shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.5;
+    }
+
+    .app {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      background: var(--sidebar);
+      color: var(--sidebar-ink);
+      padding: 22px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 22px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .brand-mark {
+      width: 32px;
+      height: 32px;
+      border-radius: 9px;
+      background: linear-gradient(135deg, #2563eb, #60a5fa);
+      display: grid;
+      place-items: center;
+      color: #fff;
+      font-weight: 800;
+      font-size: 14px;
+    }
+
+    .brand small {
+      display: block;
+      font-size: 11px;
+      color: #94a3b8;
+      font-weight: 500;
+    }
+
+    .nav-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #94a3b8;
+      margin-bottom: 8px;
+    }
+
+    .sub-inboxes {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .search {
+      width: 100%;
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(255, 255, 255, 0.06);
+      color: #f1f5f9;
+      font-size: 12px;
+      margin-bottom: 8px;
+    }
+
+    .search::placeholder { color: #94a3b8; }
+
+    .search:focus {
+      outline: none;
+      border-color: rgba(96, 165, 250, 0.6);
+    }
+
+    .inbox {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      overflow-y: auto;
+      flex: 1;
+      min-height: 120px;
+    }
+
+    .mail-item {
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: 0.15s ease;
+    }
+
+    .mail-item:hover { background: rgba(255, 255, 255, 0.08); }
+
+    .mail-item.active {
+      background: rgba(37, 99, 235, 0.18);
+      border-color: rgba(96, 165, 250, 0.35);
+    }
+
+    .mail-item .from {
+      font-size: 12px;
+      font-weight: 600;
+      color: #f1f5f9;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .mail-item .subject {
+      font-size: 12px;
+      color: #cbd5e1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .mail-item .time {
+      font-size: 10px;
+      color: #94a3b8;
+      margin-top: 4px;
+    }
+
+    .main {
+      padding: 24px 28px 40px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      min-width: 0;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .topbar h1 {
+      font-size: 20px;
+      letter-spacing: -0.02em;
+      margin: 0;
+    }
+
+    .topbar p {
+      margin: 2px 0 0;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--green);
+      background: var(--green-soft);
+      border: 1px solid #bbf7d0;
+      border-radius: 999px;
+      padding: 6px 10px;
+    }
+
+    .status .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      gap: 20px;
+      align-items: start;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 20px;
+    }
+
+    .card h2 {
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin: 0 0 12px;
+    }
+
+    .email-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 14px;
+      margin-bottom: 14px;
+    }
+
+    .email-head .subject {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin: 0 0 6px;
+    }
+
+    .email-head .meta {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .avatar {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: var(--accent-soft);
+      color: var(--accent);
+      display: grid;
+      place-items: center;
+      font-weight: 700;
+      font-size: 13px;
+      flex: 0 0 auto;
+    }
+
+    .email-body {
+      font-size: 14px;
+      color: #334155;
+      white-space: pre-wrap;
+      margin-bottom: 18px;
+      min-height: 120px;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .recipient {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+      background: #fcfcfd;
+    }
+
+    .recipient-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--ink);
+    }
+
+    .recipient-meta {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    .recipient-notes {
+      font-size: 13px;
+      line-height: 1.5;
+      color: #334155;
+      margin-top: 10px;
+      white-space: pre-wrap;
+    }
+
+    .recipient-list {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      max-height: 220px;
+      overflow-y: auto;
+    }
+
+    .recipient-row {
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 12px;
+      transition: 0.15s ease;
+    }
+
+    .recipient-row:hover {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    .recipient-row .contact-name {
+      display: block;
+      font-weight: 600;
+      color: var(--ink);
+    }
+
+    .recipient-row .contact-email {
+      display: block;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    button {
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      color: var(--ink);
+      padding: 9px 14px;
+      cursor: pointer;
+      transition: 0.15s ease;
+    }
+
+    button:hover { border-color: #cbd5e1; }
+
+    button.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+      box-shadow: 0 6px 16px rgba(37, 99, 235, 0.25);
+    }
+
+    button.primary:hover { background: #1d4ed8; }
+
+    button.ghost { background: transparent; }
+
+    .summary {
+      margin-top: 20px;
+      border-top: 1px solid var(--line);
+      padding-top: 18px;
+    }
+
+    .summary h3 {
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin: 0 0 10px;
+    }
+
+    .summary p {
+      font-size: 14px;
+      line-height: 1.6;
+      color: #334155;
+      margin: 0;
+      white-space: pre-wrap;
+    }
+
+    .summary .summary-meta {
+      margin-top: 8px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .draft {
+      margin-top: 20px;
+      border-top: 1px solid var(--line);
+      padding-top: 18px;
+    }
+
+    .draft h3 {
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin: 0 0 10px;
+    }
+
+    .draft textarea {
+      width: 100%;
+      min-height: 220px;
+      resize: vertical;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 14px;
+      font-family: inherit;
+      font-size: 14px;
+      line-height: 1.6;
+      color: var(--ink);
+      background: #fcfcfd;
+    }
+
+    .draft textarea:focus {
+      outline: 2px solid var(--accent-soft);
+      border-color: var(--accent);
+    }
+
+    .agent-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: 999px;
+      padding: 6px 10px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      border: 1px solid #bfdbfe;
+    }
+
+    .agent-badge.green { background: var(--green-soft); color: var(--green); border-color: #bbf7d0; }
+    .agent-badge.amber { background: var(--amber-soft); color: var(--amber); border-color: #fde68a; }
+    .agent-badge.purple { background: var(--purple-soft); color: var(--purple); border-color: #ddd6fe; }
+
+    .agent-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .agent-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: #fcfcfd;
+      font-size: 12px;
+    }
+
+    .agent-row .name { font-weight: 600; }
+    .agent-row .role { color: var(--muted); font-size: 11px; }
+
+    .agent-row.active {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    .flow {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .flow-step {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .flow-step .num {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--accent-soft);
+      color: var(--accent);
+      display: grid;
+      place-items: center;
+      font-size: 11px;
+      font-weight: 700;
+      flex: 0 0 auto;
+    }
+
+    .flow-step.done { color: var(--ink); }
+    .flow-step.done .num { background: var(--green); color: #fff; }
+
+    .note {
+      font-size: 12px;
+      color: var(--muted);
+      background: var(--amber-soft);
+      border: 1px solid #fde68a;
+      border-radius: 10px;
+      padding: 10px 12px;
+      margin-top: 14px;
+    }
+
+    .footer {
+      margin-top: 24px;
+      font-size: 12px;
+      color: var(--muted);
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .footer a { color: var(--accent); text-decoration: none; }
+
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .language-select {
+      font-family: inherit;
+      font-size: 12px;
+      padding: 6px 8px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      color: var(--ink);
+    }
+
+    .metrics-link {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    .loading { color: var(--muted); font-size: 13px; }
+
+    .pagination {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-top: 8px;
+      font-size: 11px;
+      color: #94a3b8;
+    }
+
+    .pagination button {
+      padding: 6px 10px;
+      font-size: 11px;
+      color: var(--sidebar-ink);
+      border-color: rgba(255, 255, 255, 0.12);
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    @media (max-width: 900px) {
+      .app { grid-template-columns: 1fr; }
+      .sidebar { flex-direction: row; flex-wrap: wrap; align-items: center; }
+      .inbox { flex-direction: row; flex-wrap: wrap; }
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">M</div>
+        <div>
+          Email Multi-Agent
+          <small>Assistant · M2 Project</small>
+        </div>
+      </div>
+
+      <div>
+        <div class="nav-label" data-i18n="subInboxes">Sub-inboxes</div>
+        <div class="sub-inboxes" id="subInboxes">
+          <div class="nav-item active" data-category="ALL" data-i18n="catAll">All</div>
+          <div class="nav-item" data-category="STUDENT" data-i18n="catStudent">Student</div>
+          <div class="nav-item" data-category="TEACHER" data-i18n="catTeacher">Teacher</div>
+          <div class="nav-item" data-category="ADMINISTRATION" data-i18n="catAdministration">Administration</div>
+          <div class="nav-item" data-category="RESEARCH" data-i18n="catResearch">Research</div>
+          <div class="nav-item" data-category="GENERIC" data-i18n="catGeneric">Generic</div>
+          <div class="nav-item" data-category="SPAM" data-i18n="catSpam">Spam</div>
+          <div class="nav-item" data-category="NO_REPLY" data-i18n="catNoReply">No reply</div>
+          <div class="nav-item" data-category="QUARANTINED" data-i18n="catQuarantine">Quarantine</div>
+        </div>
+      </div>
+
+      <div>
+        <div class="nav-label" data-i18n="inbox">Inbox</div>
+        <input type="search" id="search" class="search" placeholder="Search subject, sender, body…" data-i18n-placeholder="searchPlaceholder" />
+        <div class="inbox" id="inbox">
+          <div class="loading">Loading inbox…</div>
+        </div>
+        <div class="pagination">
+          <button class="ghost" id="prevPage" data-i18n="prev">Previous</button>
+          <span id="pageInfo" data-i18n="page">Page 1</span>
+          <button class="ghost" id="nextPage" data-i18n="next">Next</button>
+        </div>
+      </div>
+
+      <div class="nav-item active">
+        <span class="dot"></span>
+        Connected via IMAP
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <h1 data-i18n="title">Email Assistant</h1>
+          <p data-i18n="subtitle">The assistant proposes a draft. It never sends the message.</p>
+        </div>
+        <div class="topbar-actions">
+          <select id="language" class="language-select" title="Language">
+            <option value="en">English</option>
+            <option value="fr">Français</option>
+          </select>
+          <a href="/metrics.html" class="metrics-link">Metrics</a> <a href="/assistant.html" class="metrics-link">Assistant</a>
+          <span class="status"><span class="dot"></span> <span data-i18n="localLlm">Local LLM</span></span>
+        </div>
+      </header>
+
+      <div class="grid">
+        <section class="card">
+          <div class="email-head">
+            <div>
+              <div class="subject" id="subject">Select an email</div>
+              <div class="meta" id="meta">No email selected</div>
+            </div>
+            <div class="avatar" id="avatar">?</div>
+          </div>
+
+          <div class="email-body hidden" id="body">
+            Select an email from the inbox to load its content.
+          </div>
+
+          <div class="actions">
+            <button class="primary" id="route" data-i18n="route">Route &amp; propose</button>
+            <button class="ghost" id="regenerate" data-i18n="regenerate">Regenerate</button>
+            <button class="ghost" id="showFullMail" data-i18n="showFullMail">Show full mail</button>
+            <button class="ghost" id="routeAll" data-i18n="routeAll">Route all</button>
+            <button class="ghost" id="send" data-i18n="send">Send</button>
+            <button class="ghost" id="reject" data-i18n="reject">Reject</button>
+          </div>
+
+          <div class="summary">
+            <h3 data-i18n="summary">Summary</h3>
+            <p id="summaryText">Select an email to generate a summary.</p>
+            <div class="summary-meta" id="summaryMeta"></div>
+          </div>
+
+          <div class="draft">
+            <h3 data-i18n="proposedReply">Pre-generated reply</h3>
+            <textarea id="draft" placeholder="The summary agent pre-generates a reply when one is needed. You can edit it before sending."></textarea>
+          </div>
+        </section>
+
+        <aside class="card">
+          <h2 data-i18n="routing">Routing</h2>
+          <div class="agent-badge" id="agentBadge">No agent selected</div>
+          <div class="flow" id="flow">
+            <div class="flow-step" data-step="1"><span class="num">1</span> Read email</div>
+            <div class="flow-step" data-step="2"><span class="num">2</span> Route to specialist</div>
+            <div class="flow-step" data-step="3"><span class="num">3</span> Build context</div>
+            <div class="flow-step" data-step="4"><span class="num">4</span> Draft with local LLM</div>
+          </div>
+
+          <h2 style="margin-top:22px;" data-i18n="specialistAgents">Specialist agents</h2>
+          <div class="agent-list" id="agentList">
+            <div class="agent-row" data-agent="student"><span class="name">StudentAgent</span><span class="role">Course &amp; deadlines</span></div>
+            <div class="agent-row" data-agent="teacher"><span class="name">TeacherAgent</span><span class="role">Colleagues</span></div>
+            <div class="agent-row" data-agent="administration"><span class="name">AdministrationAgent</span><span class="role">Procedures</span></div>
+            <div class="agent-row" data-agent="research"><span class="name">ResearchAgent</span><span class="role">Project</span></div>
+            <div class="agent-row" data-agent="generic"><span class="name">GenericAgent</span><span class="role">Fallback</span></div>
+          </div>
+
+          <h2 style="margin-top:22px;" data-i18n="recipients">Recipients</h2>
+          <div class="recipient" id="recipient">
+            <div class="recipient-name" id="recipientName">No recipient selected</div>
+            <div class="recipient-meta" id="recipientMeta"></div>
+            <div class="recipient-notes" id="recipientNotes">Select an email to see what the AI knows about the sender.</div>
+          </div>
+
+          <h2 style="margin-top:18px;" data-i18n="knownContacts">Known contacts</h2>
+          <div class="recipient-list" id="recipientList">
+            <div class="loading">Loading contacts…</div>
+          </div>
+
+          <div class="note">
+            The app reads the inbox through IMAP and calls the local LLM. It only proposes a draft.
+          </div>
+        </aside>
+      </div>
+
+      <footer class="footer">
+        <span>Java 17 · IMAP · Ollama · Hybrid routing</span>
+        <span><a href="/metrics.html">Metrics</a> · <a href="/archi.html">How it works →</a></span>
+      </footer>
+    </main>
+  </div>
+
+  <script>
+    let currentEmails = [];
+    let current = -1;
+    let currentCategory = "ALL";
+    let searchText = "";
+    let currentThreadId = null;
+    let currentPage = 1;
+    let pageSize = 10;
+    let totalPages = 1;
+    let language = localStorage.getItem("language") || "en";
+
+    const translations = {
+      en: {
+        title: "Email Assistant",
+        subtitle: "The assistant proposes a draft. It never sends the message.",
+        localLlm: "Local LLM",
+        subInboxes: "Sub-inboxes",
+        inbox: "Inbox",
+        searchPlaceholder: "Search subject, sender, body…",
+        prev: "Previous",
+        next: "Next",
+        page: "Page",
+        routing: "Routing",
+        specialistAgents: "Specialist agents",
+        recipients: "Recipients",
+        knownContacts: "Known contacts",
+        summary: "Summary",
+        proposedReply: "Pre-generated reply",
+        route: "Route & propose",
+        regenerate: "Regenerate",
+        showFullMail: "Show full mail",
+        hideFullMail: "Hide full mail",
+        routeAll: "Route all",
+        send: "Send",
+        reject: "Reject",
+        metrics: "Metrics",
+        loading: "Loading inbox…",
+        noEmails: "No emails in this sub-inbox.",
+        noContacts: "No contacts yet.",
+        retry: "Retry",
+        catAll: "All",
+        catStudent: "Student",
+        catTeacher: "Teacher",
+        catAdministration: "Administration",
+        catResearch: "Research",
+        catGeneric: "Generic",
+        catSpam: "Spam",
+        catNoReply: "No reply",
+        catQuarantine: "Quarantine"
+      },
+      fr: {
+        title: "Assistant Email",
+        subtitle: "L'assistant propose un brouillon. Il n'envoie jamais le message.",
+        localLlm: "LLM local",
+        subInboxes: "Sous-boîtes",
+        inbox: "Boîte de réception",
+        searchPlaceholder: "Rechercher objet, expéditeur, corps…",
+        prev: "Précédent",
+        next: "Suivant",
+        page: "Page",
+        routing: "Routage",
+        specialistAgents: "Agents spécialisés",
+        recipients: "Destinataires",
+        knownContacts: "Contacts connus",
+        summary: "Résumé",
+        proposedReply: "Réponse pré-générée",
+        route: "Router et proposer",
+        regenerate: "Régénérer",
+        showFullMail: "Afficher le mail",
+        hideFullMail: "Masquer le mail",
+        routeAll: "Router tout",
+        send: "Envoyer",
+        reject: "Rejeter",
+        metrics: "Métriques",
+        loading: "Chargement de la boîte…",
+        noEmails: "Aucun email dans cette sous-boîte.",
+        noContacts: "Aucun contact.",
+        retry: "Réessayer",
+        catAll: "Tous",
+        catStudent: "Étudiant",
+        catTeacher: "Enseignant",
+        catAdministration: "Administration",
+        catResearch: "Recherche",
+        catGeneric: "Générique",
+        catSpam: "Spam",
+        catNoReply: "Sans réponse",
+        catQuarantine: "Quarantaine"
+      }
+    };
+
+    function t(key) {
+      return (translations[language] && translations[language][key]) || translations.en[key] || key;
+    }
+
+    function applyLanguage() {
+      document.querySelectorAll("[data-i18n]").forEach(el => {
+        const key = el.dataset.i18n;
+        if (key === "page") {
+          el.textContent = t("page") + " " + currentPage;
+        } else {
+          el.textContent = t(key);
+        }
+      });
+      document.querySelectorAll("[data-i18n-placeholder]").forEach(el => {
+        el.placeholder = t(el.dataset.i18nPlaceholder);
+      });
+      document.getElementById("language").value = language;
+      const body = document.getElementById("body");
+      if (body) {
+        document.getElementById("showFullMail").textContent = body.classList.contains("hidden")
+          ? t("showFullMail") : t("hideFullMail");
+      }
+      document.getElementById("pageInfo").textContent = t("page") + " " + currentPage + " / " + Math.max(1, totalPages);
+    }
+
+    function badgeClass(category) {
+      const c = (category || "").toLowerCase();
+      if (c === "teacher") return "agent-badge green";
+      if (c === "administration") return "agent-badge amber";
+      if (c === "research") return "agent-badge purple";
+      if (c === "spam" || c === "quarantined") return "agent-badge red";
+      if (c === "no_reply") return "agent-badge grey";
+      return "agent-badge";
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "").replace(/[&<>"']/g, c => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+      }[c]));
+    }
+
+    async function loadInbox() {
+      const inbox = document.getElementById("inbox");
+      const previous = currentThreadId;
+      if (previous === null) {
+        inbox.innerHTML = '<div class="loading">' + escapeHtml(t("loading")) + '</div>';
+      }
+      try {
+        const params = new URLSearchParams({
+          page: String(currentPage),
+          pageSize: String(pageSize),
+          category: currentCategory,
+          search: searchText
+        });
+        const response = await fetch("/api/inbox?" + params.toString());
+        if (!response.ok) throw new Error(await response.text());
+        const data = await response.json();
+        currentEmails = data.items || [];
+        totalPages = Math.max(1, Math.ceil((data.total || 0) / pageSize));
+        renderInbox();
+        if (previous !== null) {
+          const index = currentEmails.findIndex(email => email.threadId === previous);
+          if (index >= 0) select(index);
+          else if (currentEmails.length > 0) select(0);
+        } else if (currentEmails.length > 0) {
+          select(0);
+        }
+        applyLanguage();
+      } catch (err) {
+        if (previous === null) {
+          inbox.innerHTML = '<div class="loading">' + escapeHtml(t("retry")) + ' ' + escapeHtml(err.message)
+            + '<br><button class="ghost" id="retry" style="margin-top:10px;">' + escapeHtml(t("retry")) + '</button></div>';
+          const retry = document.getElementById("retry");
+          if (retry) retry.addEventListener("click", loadInbox);
+        }
+      }
+    }
+
+    function renderInbox() {
+      const inbox = document.getElementById("inbox");
+      if (currentEmails.length === 0) {
+        inbox.innerHTML = '<div class="loading">' + escapeHtml(t("noEmails")) + '</div>';
+        return;
+      }
+      inbox.innerHTML = "";
+      currentEmails.forEach((email, index) => {
+        const item = document.createElement("div");
+        item.className = "mail-item" + (index === current ? " active" : "");
+        item.innerHTML = `
+          <div class="from">${escapeHtml(email.sender)}</div>
+          <div class="subject">${escapeHtml(email.subject)}</div>
+          <div class="time">${escapeHtml(email.category || "")} · ${escapeHtml(email.threadId || "")}</div>
+        `;
+        item.addEventListener("click", () => select(index));
+        inbox.appendChild(item);
+      });
+    }
+
+    function select(index) {
+      current = index;
+      const email = currentEmails[index];
+      if (!email) return;
+      currentThreadId = email.threadId || null;
+      document.querySelectorAll(".mail-item").forEach((el, i) => {
+        el.classList.toggle("active", i === index);
+      });
+      document.getElementById("subject").textContent = email.subject || "(no subject)";
+      document.getElementById("meta").textContent = `From ${email.sender || "unknown"} · ${email.recipient || "unknown"}`;
+      document.getElementById("avatar").textContent = (email.sender || "?").trim().charAt(0);
+      document.getElementById("body").textContent = email.body || "";
+      document.getElementById("body").classList.add("hidden");
+      document.getElementById("showFullMail").textContent = t("showFullMail");
+      document.getElementById("draft").value = "";
+      document.getElementById("summaryText").textContent = "Generating summary…";
+      document.getElementById("summaryMeta").textContent = "";
+      loadRecipient(email);
+      summarize(email);
+    }
+
+    async function loadRecipient(email) {
+      return loadRecipientByEmail(email.sender || "");
+    }
+
+    async function loadRecipientByEmail(address) {
+      const name = document.getElementById("recipientName");
+      const meta = document.getElementById("recipientMeta");
+      const notes = document.getElementById("recipientNotes");
+      name.textContent = "Loading recipient…";
+      meta.textContent = "";
+      notes.textContent = "";
+      try {
+        const response = await fetch("/api/recipient?email=" + encodeURIComponent(address));
+        if (!response.ok) throw new Error(await response.text());
+        const knowledge = await response.json();
+        name.textContent = knowledge.name || "Unknown";
+        meta.textContent = [knowledge.role, knowledge.organization, knowledge.email].filter(Boolean).join(" · ");
+        notes.textContent = knowledge.notes || "No knowledge available.";
+      } catch (err) {
+        name.textContent = "Unknown recipient";
+        notes.textContent = "Could not load recipient knowledge: " + err.message;
+      }
+    }
+
+    async function loadRecipients() {
+      const list = document.getElementById("recipientList");
+      try {
+        const response = await fetch("/api/recipients");
+        if (!response.ok) throw new Error(await response.text());
+        const contacts = await response.json();
+        if (!contacts.length) {
+          list.innerHTML = '<div class="loading">' + escapeHtml(t("noContacts")) + '</div>';
+          return;
+        }
+        list.innerHTML = "";
+        contacts.forEach(contact => {
+          const row = document.createElement("div");
+          row.className = "recipient-row";
+          row.innerHTML = `
+            <span class="contact-name">${escapeHtml(contact.name || contact.email)}</span>
+            <span class="contact-email">${escapeHtml(contact.email)}</span>
+          `;
+          row.addEventListener("click", () => loadRecipientByEmail(contact.email));
+          list.appendChild(row);
+        });
+      } catch (err) {
+        list.innerHTML = '<div class="loading">' + escapeHtml(t("noContacts")) + ' ' + escapeHtml(err.message) + '</div>';
+      }
+    }
+
+    async function summarize(email) {
+      const summaryText = document.getElementById("summaryText");
+      const summaryMeta = document.getElementById("summaryMeta");
+      summaryText.textContent = "Generating summary…";
+      summaryMeta.textContent = "";
+      try {
+        const response = await fetch("/api/summary", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sender: email.sender,
+            recipient: email.recipient,
+            subject: email.subject,
+            body: email.body,
+            threadId: email.threadId
+          })
+        });
+        if (!response.ok) throw new Error(await response.text());
+        const data = await response.json();
+        if (data.quarantined) {
+          summaryText.textContent = "Quarantined: " + (data.reason || "suspicious content");
+          summaryMeta.textContent = "This message was not sent to the routing agents.";
+          return;
+        }
+        summaryText.textContent = data.summary || "No summary available.";
+        summaryMeta.textContent = data.needsReply
+          ? "Reply needed — a pre-generated draft is below."
+          : "No reply needed — summary only.";
+        if (data.needsReply) {
+          document.getElementById("draft").value = data.draft || "";
+        }
+      } catch (err) {
+        summaryText.textContent = "Summary failed: " + err.message;
+        summaryMeta.textContent = "";
+      }
+    }
+
+    async function route() {
+      if (current < 0) return;
+      const email = currentEmails[current];
+      document.getElementById("agentBadge").textContent = "Routing…";
+      document.getElementById("agentBadge").className = "agent-badge";
+      document.getElementById("draft").value = "Generating draft…";
+      document.querySelectorAll(".flow-step").forEach(el => el.classList.remove("done"));
+      try {
+        const response = await fetch("/api/route", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sender: email.sender,
+            recipient: email.recipient,
+            subject: email.subject,
+            body: email.body,
+            threadId: email.threadId
+          })
+        });
+        if (!response.ok) throw new Error(await response.text());
+        const data = await response.json();
+        if (data.quarantined) {
+          document.getElementById("agentBadge").textContent = "Quarantined";
+          document.getElementById("agentBadge").className = "agent-badge red";
+          document.getElementById("draft").value = "Quarantined: " + (data.securityReason || "suspicious content");
+          return;
+        }
+        document.getElementById("agentBadge").textContent = data.agent || "Unknown agent";
+        document.getElementById("agentBadge").className = badgeClass(data.category);
+        document.getElementById("draft").value = data.draft || "";
+        document.querySelectorAll(".flow-step").forEach(el => el.classList.add("done"));
+        document.querySelectorAll(".agent-row").forEach(el => {
+          el.classList.toggle("active", el.dataset.agent === (data.category || "").toLowerCase());
+        });
+      } catch (err) {
+        document.getElementById("agentBadge").textContent = "Error";
+        document.getElementById("agentBadge").className = "agent-badge";
+        document.getElementById("draft").value = "Unable to generate a draft: " + err.message;
+      }
+    }
+
+    async function routeAll() {
+      if (currentEmails.length === 0) return;
+      document.getElementById("agentBadge").textContent = "Bulk routing…";
+      document.getElementById("agentBadge").className = "agent-badge";
+      document.getElementById("draft").value = "Routing " + currentEmails.length + " emails…";
+      document.querySelectorAll(".flow-step").forEach(el => el.classList.remove("done"));
+      try {
+        const payload = currentEmails.map(email => ({
+          sender: email.sender,
+          recipient: email.recipient,
+          subject: email.subject,
+          body: email.body,
+          threadId: email.threadId
+        }));
+        const response = await fetch("/api/route-all", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        if (!response.ok) throw new Error(await response.text());
+        const data = await response.json();
+        document.getElementById("agentBadge").textContent = "Bulk routed " + data.length + " emails";
+        document.getElementById("agentBadge").className = "agent-badge green";
+        document.querySelectorAll(".flow-step").forEach(el => el.classList.add("done"));
+        document.getElementById("draft").value = data.map(item =>
+          `#${item.agent} (${item.category})\n${item.draft}`
+        ).join("\n\n---\n\n");
+      } catch (err) {
+        document.getElementById("agentBadge").textContent = "Error";
+        document.getElementById("agentBadge").className = "agent-badge";
+        document.getElementById("draft").value = "Bulk routing failed: " + err.message;
+      }
+    }
+
+    async function send() {
+      if (current < 0) return;
+      const email = currentEmails[current];
+      const draft = document.getElementById("draft").value;
+      if (!draft.trim()) {
+        document.getElementById("agentBadge").textContent = "No draft";
+        return;
+      }
+      const confirmed = window.confirm("Send this reply to " + email.sender + "?");
+      if (!confirmed) return;
+      document.getElementById("agentBadge").textContent = "Sending…";
+      document.getElementById("agentBadge").className = "agent-badge";
+      try {
+        const response = await fetch("/api/send", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sender: email.sender,
+            recipient: email.recipient,
+            subject: email.subject,
+            body: email.body,
+            threadId: email.threadId,
+            reply: draft,
+            category: email.category
+          })
+        });
+        if (!response.ok) throw new Error(await response.text());
+        document.getElementById("agentBadge").textContent = "Sent";
+        document.getElementById("agentBadge").className = "agent-badge green";
+        document.getElementById("draft").value = draft + "\n\n[Sent by user]";
+        loadRecipients();
+        loadRecipient(email);
+      } catch (err) {
+        document.getElementById("agentBadge").textContent = "Send failed";
+        document.getElementById("agentBadge").className = "agent-badge";
+        document.getElementById("draft").value = draft + "\n\n[Send failed: " + err.message + "]";
+      }
+    }
+
+    async function recordFeedback(action) {
+      if (current < 0) return;
+      const email = currentEmails[current];
+      try {
+        await fetch("/api/feedback", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            threadId: email.threadId,
+            sender: email.sender,
+            subject: email.subject,
+            category: email.category,
+            action: action,
+            confidence: 0,
+            draft: document.getElementById("draft").value
+          })
+        });
+      } catch (ignored) {
+        // Feedback is best effort.
+      }
+    }
+
+    document.querySelectorAll(".sub-inboxes .nav-item").forEach(el => {
+      el.addEventListener("click", () => {
+        currentCategory = el.dataset.category;
+        currentPage = 1;
+        document.querySelectorAll(".sub-inboxes .nav-item").forEach(n => n.classList.toggle("active", n === el));
+        loadInbox();
+      });
+    });
+
+    document.getElementById("route").addEventListener("click", route);
+    document.getElementById("regenerate").addEventListener("click", () => {
+      recordFeedback("reject");
+      route();
+    });
+    document.getElementById("showFullMail").addEventListener("click", () => {
+      const body = document.getElementById("body");
+      const button = document.getElementById("showFullMail");
+      const hidden = body.classList.toggle("hidden");
+      button.textContent = hidden ? t("showFullMail") : t("hideFullMail");
+    });
+    document.getElementById("routeAll").addEventListener("click", routeAll);
+    document.getElementById("send").addEventListener("click", send);
+    document.getElementById("reject").addEventListener("click", () => {
+      recordFeedback("reject");
+      document.getElementById("draft").value = "[Rejected by user — no message sent]";
+    });
+
+    document.getElementById("search").addEventListener("input", (event) => {
+      searchText = event.target.value;
+      currentPage = 1;
+      loadInbox();
+    });
+
+    document.getElementById("prevPage").addEventListener("click", () => {
+      if (currentPage > 1) {
+        currentPage--;
+        loadInbox();
+      }
+    });
+    document.getElementById("nextPage").addEventListener("click", () => {
+      if (currentPage < totalPages) {
+        currentPage++;
+        loadInbox();
+      }
+    });
+
+    async function syncLanguageToServer(value) {
+      try {
+        await fetch("/api/language", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ language: value })
+        });
+      } catch (ignored) {
+        // The UI still switches locally if the server is unreachable.
+      }
+    }
+
+    document.getElementById("language").addEventListener("change", (event) => {
+      language = event.target.value;
+      localStorage.setItem("language", language);
+      applyLanguage();
+      syncLanguageToServer(language);
+    });
+
+    document.getElementById("language").value = language;
+    applyLanguage();
+    syncLanguageToServer(language);
+    loadInbox();
+    loadRecipients();
+    setInterval(loadInbox, 60000);
+  </script>
+</body>
+</html>

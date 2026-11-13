@@ -1,0 +1,17 @@
+# Labeled evaluation set. One JSON object per line.
+# Fields: sender, recipient, subject, body, expected.
+{"sender":"student@uni.fr","recipient":"lecturer@uni.fr","subject":"Question about the course","body":"Hello, I would like to know the deadline for the assignment. Thanks.","expected":"STUDENT"}
+{"sender":"student@uni.fr","recipient":"lecturer@uni.fr","subject":"Exam grade","body":"I would like to discuss my grade for the exam.","expected":"STUDENT"}
+{"sender":"student@uni.fr","recipient":"lecturer@uni.fr","subject":"Course schedule","body":"Could you confirm the schedule of the course for next week?","expected":"STUDENT"}
+{"sender":"colleague@uni.fr","recipient":"lecturer@uni.fr","subject":"Meeting with colleagues","body":"Can we schedule a meeting with the teaching team?","expected":"TEACHER"}
+{"sender":"colleague@uni.fr","recipient":"lecturer@uni.fr","subject":"Reunion","body":"Are you available for the reunion on Tuesday?","expected":"TEACHER"}
+{"sender":"colleague@uni.fr","recipient":"lecturer@uni.fr","subject":"Teaching coordination","body":"I propose to coordinate the teaching sessions next semester.","expected":"TEACHER"}
+{"sender":"admin@uni.fr","recipient":"lecturer@uni.fr","subject":"Invoice","body":"Please send the invoice for your expense claim.","expected":"ADMINISTRATION"}
+{"sender":"admin@uni.fr","recipient":"lecturer@uni.fr","subject":"Form","body":"Please fill the form and return it to the administration.","expected":"ADMINISTRATION"}
+{"sender":"admin@uni.fr","recipient":"lecturer@uni.fr","subject":"Room booking","body":"I need to book a room for the procedure meeting.","expected":"ADMINISTRATION"}
+{"sender":"partner@lab.org","recipient":"lecturer@uni.fr","subject":"SuperMASProject","body":"The milestone of the research project is approaching.","expected":"RESEARCH"}
+{"sender":"partner@lab.org","recipient":"lecturer@uni.fr","subject":"Research paper","body":"We should review the paper for the project.","expected":"RESEARCH"}
+{"sender":"partner@lab.org","recipient":"lecturer@uni.fr","subject":"Project milestone","body":"Can we confirm the milestone of the SuperMASProject?","expected":"RESEARCH"}
+{"sender":"someone@uni.fr","recipient":"lecturer@uni.fr","subject":"Hello","body":"I have a quick question.","expected":"GENERIC"}
+{"sender":"someone@uni.fr","recipient":"lecturer@uni.fr","subject":"Follow-up","body":"Just checking in, no specific request.","expected":"GENERIC"}
+{"sender":"someone@uni.fr","recipient":"lecturer@uni.fr","subject":"Information","body":"I am not sure who to contact.","expected":"GENERIC"}

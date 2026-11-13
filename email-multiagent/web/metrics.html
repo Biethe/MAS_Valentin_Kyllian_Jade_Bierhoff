@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Metrics · Email Multi-Agent</title>
+  <style>
+    :root {
+      --bg: #f4f5f9;
+      --panel: #ffffff;
+      --ink: #111827;
+      --muted: #6b7280;
+      --line: #e5e7eb;
+      --blue: #2563eb;
+      --green: #059669;
+      --amber: #b45309;
+      --red: #dc2626;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Inter", ui-sans-serif, -apple-system, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+    }
+    main { max-width: 1100px; margin: 0 auto; padding: 28px 20px 60px; }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 22px;
+    }
+    h1 { margin: 0; font-size: 24px; }
+    .sub { color: var(--muted); font-size: 13px; margin-top: 4px; }
+    .back { color: var(--blue); text-decoration: none; font-weight: 600; font-size: 14px; }
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 14px;
+      margin-bottom: 22px;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 16px;
+    }
+    .card .label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
+    .card .value { font-size: 28px; font-weight: 700; margin-top: 6px; }
+    .card .value.green { color: var(--green); }
+    .card .value.amber { color: var(--amber); }
+    .card .value.red { color: var(--red); }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 18px;
+      margin-bottom: 18px;
+    }
+    .panel h2 { font-size: 15px; margin: 0 0 12px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+    th { color: var(--muted); font-weight: 600; }
+    .bar { height: 8px; background: var(--line); border-radius: 999px; overflow: hidden; }
+    .bar > span { display: block; height: 100%; background: var(--blue); }
+    .empty { color: var(--muted); font-size: 13px; }
+    .muted { color: var(--muted); }
+    .error { color: var(--red); font-size: 13px; }
+    @media (max-width: 640px) {
+      header { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <h1>Metrics</h1>
+        <div class="sub">Routing, latency, quarantine and draft acceptance.</div>
+      </div>
+      <a class="back" href="/">← Back to inbox</a>
+    </header>
+
+    <div class="cards" id="cards">
+      <div class="card"><div class="label">Routed</div><div class="value" id="routed">—</div></div>
+      <div class="card"><div class="label">Quarantined</div><div class="value red" id="quarantined">—</div></div>
+      <div class="card"><div class="label">Sent</div><div class="value green" id="sent">—</div></div>
+      <div class="card"><div class="label">Acceptance</div><div class="value" id="acceptance">—</div></div>
+      <div class="card"><div class="label">Avg latency</div><div class="value" id="latency">—</div></div>
+    </div>
+
+    <div class="panel">
+      <h2>Categories</h2>
+      <div id="categories" class="empty">No data yet.</div>
+    </div>
+
+    <div class="panel">
+      <h2>Recent audit events</h2>
+      <div id="audit" class="empty">No events yet.</div>
+    </div>
+
+    <div class="panel">
+      <h2>Recent feedback</h2>
+      <div id="feedback" class="empty">No feedback yet.</div>
+    </div>
+  </main>
+
+  <script>
+    const language = localStorage.getItem("language") || "en";
+    const translations = {
+      en: {
+        routed: "Routed", quarantined: "Quarantined", sent: "Sent",
+        acceptance: "Acceptance", latency: "Avg latency", categories: "Categories",
+        recentAudit: "Recent audit events", recentFeedback: "Recent feedback",
+        noData: "No data yet.", noEvents: "No events yet.", noFeedback: "No feedback yet.",
+        events: "events", back: "← Back to inbox"
+      },
+      fr: {
+        routed: "Routés", quarantined: "En quarantaine", sent: "Envoyés",
+        acceptance: "Acceptation", latency: "Latence moyenne", categories: "Catégories",
+        recentAudit: "Derniers événements d'audit", recentFeedback: "Derniers retours",
+        noData: "Aucune donnée.", noEvents: "Aucun événement.", noFeedback: "Aucun retour.",
+        events: "événements", back: "← Retour à la boîte"
+      }
+    };
+    const t = key => (translations[language] && translations[language][key]) || translations.en[key] || key;
+
+    function escapeHtml(value) {
+      return String(value ?? "").replace(/[&<>"']/g, c => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+      }[c]));
+    }
+
+    async function load() {
+      try {
+        const [metrics, audit, feedback] = await Promise.all([
+          fetch("/api/metrics").then(r => r.json()),
+          fetch("/api/audit").then(r => r.json()),
+          fetch("/api/feedback").then(r => r.json())
+        ]);
+        document.getElementById("routed").textContent = metrics.routed ?? 0;
+        document.getElementById("quarantined").textContent = metrics.quarantined ?? 0;
+        document.getElementById("sent").textContent = metrics.sent ?? 0;
+        document.getElementById("acceptance").textContent = Math.round((metrics.acceptance ?? 0) * 100) + "%";
+        document.getElementById("latency").textContent = Math.round(metrics.averageLatencyMs ?? 0) + " ms";
+        renderCategories(metrics.categories || {});
+        renderAudit(audit || []);
+        renderFeedback(feedback || []);
+      } catch (err) {
+        document.getElementById("cards").innerHTML = '<div class="error">' + escapeHtml(err.message) + '</div>';
+      }
+    }
+
+    function renderCategories(categories) {
+      const entries = Object.entries(categories);
+      if (!entries.length) {
+        document.getElementById("categories").innerHTML = '<span class="empty">' + escapeHtml(t("noData")) + '</span>';
+        return;
+      }
+      const max = Math.max(...entries.map(([, value]) => value), 1);
+      document.getElementById("categories").innerHTML = entries.map(([name, value]) => `
+        <div style="margin-bottom:10px;">
+          <div style="display:flex;justify-content:space-between;font-size:12px;">
+            <span>${escapeHtml(name)}</span><span>${value}</span>
+          </div>
+          <div class="bar"><span style="width:${Math.round((value / max) * 100)}%"></span></div>
+        </div>
+      `).join("");
+    }
+
+    function renderAudit(entries) {
+      const recent = entries.slice(-20).reverse();
+      if (!recent.length) {
+        document.getElementById("audit").innerHTML = '<span class="empty">' + escapeHtml(t("noEvents")) + '</span>';
+        return;
+      }
+      document.getElementById("audit").innerHTML = `
+        <table>
+          <tr><th>Time</th><th>Subject</th><th>Category</th><th>Action</th><th>Duration</th></tr>
+          ${recent.map(e => `<tr>
+            <td>${escapeHtml((e.timestamp || "").slice(0, 19))}</td>
+            <td>${escapeHtml(e.subject || "")}</td>
+            <td>${escapeHtml(e.category || "")}</td>
+            <td>${escapeHtml(e.action || "")}</td>
+            <td>${escapeHtml(e.durationMs || 0)} ms</td>
+          </tr>`).join("")}
+        </table>`;
+    }
+
+    function renderFeedback(entries) {
+      const recent = entries.slice(-20).reverse();
+      if (!recent.length) {
+        document.getElementById("feedback").innerHTML = '<span class="empty">' + escapeHtml(t("noFeedback")) + '</span>';
+        return;
+      }
+      document.getElementById("feedback").innerHTML = `
+        <table>
+          <tr><th>Time</th><th>Category</th><th>Action</th><th>Draft</th></tr>
+          ${recent.map(e => `<tr>
+            <td>${escapeHtml((e.timestamp || "").slice(0, 19))}</td>
+            <td>${escapeHtml(e.category || "")}</td>
+            <td>${escapeHtml(e.action || "")}</td>
+            <td>${escapeHtml((e.draft || "").slice(0, 80))}</td>
+          </tr>`).join("")}
+        </table>`;
+    }
+
+    document.querySelectorAll("h1").forEach(el => { el.textContent = el.textContent; });
+    document.querySelector("a.back").textContent = t("back");
+    load();
+    setInterval(load, 30000);
+  </script>
+</body>
+</html>

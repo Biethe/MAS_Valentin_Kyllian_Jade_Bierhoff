@@ -1,0 +1,21 @@
+PROJET DE RECHERCHE : SuperMASProject
+--------------------------------------------------
+Objectif : etudier la cooperation d'agents specialises s'appuyant sur des LLM locaux
+pour le traitement automatise d'emails professionnels.
+
+Membres :
+- Direction : Pr Martin (coordinateur)
+- Enseignants-chercheurs : Dr Bernard, Dr Lopez
+- Doctorants : A. Diallo, S. Meyer
+- Partenaires externes : universite de Barcelone (Pr Sanchez)
+
+Jalons :
+- 15 novembre : soumission de l'article de position
+- 20 decembre : livraison du prototype 1
+- mars : campagne d'evaluation
+
+Consignes internes :
+- rester concis dans les echanges du projet ;
+- privilegier l'anglais avec les partenaires internationaux ;
+- ne jamais s'engager sur une nouvelle tache sans validation du coordinateur ;
+- rappeler systematiquement le prochain jalon dans les reponses liees au projet.

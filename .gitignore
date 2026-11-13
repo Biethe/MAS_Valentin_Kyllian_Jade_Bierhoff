@@ -19,3 +19,8 @@ gmail-token.json
 /.venv/
 
 course_materials/
+
+# Build output of the Maven modules and local state
+target/
+logs/
+.DS_Store

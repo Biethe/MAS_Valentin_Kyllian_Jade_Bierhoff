@@ -1,0 +1,4 @@
+Teaching context:
+- Course: Multi-Agent Systems, M2 AI.
+- Weekly sessions on Tuesday afternoon.
+- The lecturer is available by appointment.

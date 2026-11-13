@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Assistant mail</title>
+<style>
+  :root { --bg:#f6f7f9; --fg:#1b1f24; --card:#fff; --line:#d8dde3; --accent:#2457d6; --muted:#5b6672; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#14171b; --fg:#e8ebef; --card:#1d2229; --line:#2f3640; --accent:#7aa2ff; --muted:#9aa5b1; } }
+  body { margin:0; font:15px/1.5 system-ui, sans-serif; background:var(--bg); color:var(--fg); }
+  main { max-width:760px; margin:0 auto; padding:16px; }
+  h1 { font-size:20px; margin:8px 0 2px; } .sub { color:var(--muted); margin-bottom:12px; }
+  #log { display:flex; flex-direction:column; gap:10px; margin-bottom:12px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:10px 12px; }
+  .me { align-self:flex-end; background:var(--accent); color:#fff; border-color:var(--accent); }
+  .tag { font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; }
+  pre { white-space:pre-wrap; margin:4px 0 0; font:inherit; }
+  form { display:flex; gap:8px; } input { flex:1; padding:10px; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--fg); font:inherit; }
+  button { padding:10px 16px; border:0; border-radius:8px; background:var(--accent); color:#fff; font:inherit; cursor:pointer; }
+  details { margin-top:6px; color:var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Assistant mail</h1>
+  <div class="sub" id="who">Les brouillons sont enregistrés, jamais envoyés.</div>
+  <div id="log"></div>
+  <form id="f"><input id="t" autocomplete="off" placeholder="Ex. Résume le mail d'Ada, Réponds à Ada" autofocus><button>Envoyer</button></form>
+</main>
+<script>
+const log = document.getElementById('log');
+function add(cls, tag, text) {
+  const d = document.createElement('div'); d.className = 'card ' + cls;
+  if (tag) { const t = document.createElement('div'); t.className = 'tag'; t.textContent = tag; d.appendChild(t); }
+  const p = document.createElement('pre'); p.textContent = text; d.appendChild(p);
+  log.appendChild(d); d.scrollIntoView(); return d;
+}
+fetch('/api/health').then(r => r.json()).then(h => { document.getElementById('who').textContent += ' — ' + h.assistant; }).catch(() => {});
+document.getElementById('f').addEventListener('submit', async e => {
+  e.preventDefault();
+  const input = document.getElementById('t'); const text = input.value.trim(); if (!text) return;
+  input.value = ''; add('me', '', text);
+  let res;
+  try {
+    const r = await fetch('/api/assistant', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ text }) });
+    res = await r.json(); if (!r.ok) { add('', 'erreur', res.error || r.status); return; }
+  } catch (err) { add('', 'erreur', String(err)); return; }
+  (res.warnings || []).forEach(w => add('', 'attention', w));
+  res.chats.forEach(c => add('', 'assistant', c));
+  res.refused.forEach(c => add('', 'refus', c));
+  res.questions.forEach(q => add('', 'question', q.text + (q.options.length ? '\n- ' + q.options.join('\n- ') : '')));
+  res.summaries.forEach(s => add('', 'résumé', s.body));
+  res.drafts.forEach(d => add('', 'brouillon #' + d.id + ' (non envoyé)', 'À : ' + d.to.join(', ') + '\nObjet : ' + d.subject + '\n\n' + d.body));
+  if (res.trace && res.trace.length) {
+    const last = log.lastElementChild; const det = document.createElement('details');
+    const s = document.createElement('summary'); s.textContent = 'trace (' + res.trace.length + ' étapes)'; det.appendChild(s);
+    const p = document.createElement('pre'); p.textContent = res.trace.map(t => '[' + t.actor + '] ' + t.action + (t.detail ? ' — ' + t.detail : '') + (t.error ? '  !! ' + t.error : '')).join('\n');
+    det.appendChild(p); last.appendChild(det);
+  }
+});
+</script>
+</body>
+</html>

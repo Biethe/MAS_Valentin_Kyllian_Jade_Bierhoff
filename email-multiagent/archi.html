@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spécification : agent de tri et de réponse aux mails (RAG)</title>
+<style>
+:root{--bg:#fbfaf8;--fg:#1f1e1b;--mut:#5f5e5a;--line:#d3d1c7;--card:#f1efe8;--ag:#eeedfe;--agl:#534ab7;--agt:#3c3489;--hu:#faeeda;--hul:#854f0b;--hut:#633806;--rg:#e1f5ee;--rgl:#0f6e56;--rgt:#085041;--code:#e9e7df}
+@media (prefers-color-scheme:dark){:root{--bg:#1c1b19;--fg:#ecebe5;--mut:#a9a79e;--line:#444441;--card:#2a2926;--ag:#3c3489;--agl:#afa9ec;--agt:#eeedfe;--hu:#633806;--hul:#fac775;--hut:#faeeda;--rg:#085041;--rgl:#5dcaa5;--rgt:#e1f5ee;--code:#33312d}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.65 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:860px;margin:0 auto;padding:32px 20px 64px}
+h1{font-size:26px;font-weight:600;margin:0 0 8px}
+h2{font-size:20px;font-weight:600;margin:40px 0 12px;padding-top:8px;border-top:1px solid var(--line)}
+h3{font-size:16px;font-weight:600;margin:24px 0 6px}
+p,li{max-width:72ch}
+.mut{color:var(--mut)}
+code,pre{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13.5px}
+code{background:var(--code);padding:1px 5px;border-radius:4px}
+pre{background:var(--code);padding:14px;border-radius:8px;overflow-x:auto;margin:8px 0}
+table{border-collapse:collapse;width:100%;margin:8px 0;font-size:15px}
+th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+th{background:var(--card);font-weight:600}
+.wrap{overflow-x:auto}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:14px;margin:6px 0 0}
+.legend span::before{content:"";display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px;border:1px solid}
+.l1::before{background:var(--ag);border-color:var(--agl)}.l2::before{background:var(--hu);border-color:var(--hul)}.l3::before{background:var(--rg);border-color:var(--rgl)}
+svg{width:100%;min-width:620px;height:auto;display:block}
+svg text{font-family:system-ui,sans-serif;fill:var(--fg)}
+.t{font-size:14px;font-weight:600}.ts{font-size:12px;fill:var(--mut)}
+.b rect{fill:var(--card);stroke:var(--line);stroke-width:1}
+.a rect{fill:var(--ag);stroke:var(--agl);stroke-width:1}.a .t{fill:var(--agt)}.a .ts{fill:var(--agt)}
+.h rect{fill:var(--hu);stroke:var(--hul);stroke-width:1}.h .t,.h .ts{fill:var(--hut)}
+.r rect{fill:var(--rg);stroke:var(--rgl);stroke-width:1}.r .t,.r .ts{fill:var(--rgt)}
+.ln{fill:none;stroke:var(--mut);stroke-width:1.2}.rl{fill:none;stroke:var(--rgl);stroke-width:1.2}
+</style>
+</head>
+<body>
+<main>
+<h1>Agent de tri et de réponse automatique aux mails (RAG)</h1>
+<p class="mut">Cahier des charges destiné à un agent de génération de code. Langue des mails et des réponses : celle du mail reçu (français par défaut).</p>
+
+<h2>1. Objectif</h2>
+<p>Construire un système multi-agents qui lit les mails entrants, les trie, rédige des réponses à l'aide d'une base de connaissances (RAG) sur les contacts et leurs documents, et envoie ces réponses. Les mails importants exigent la validation de l'utilisateur avant l'envoi. Tout ce qui est incertain ou suspect est remonté à l'humain plutôt que traité automatiquement.</p>
+
+<h2>2. Schéma du flux</h2>
+<div class="wrap">
+<svg viewBox="0 0 680 770" role="img" aria-label="Flux : réception, extraction, A0 sécurité, A1 tri, catégories, A2 réponse, validation utilisateur, A3 envoi, log.">
+<defs><marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+<g class="b"><rect x="210" y="20" width="200" height="44" rx="8"/><text class="t" x="310" y="42" text-anchor="middle" dominant-baseline="central">Réception du mail</text></g>
+<line class="ln" x1="310" y1="64" x2="310" y2="90" marker-end="url(#ar)"/>
+<g class="b"><rect x="210" y="90" width="200" height="56" rx="8"/><text class="t" x="310" y="109" text-anchor="middle" dominant-baseline="central">Extraction</text><text class="ts" x="310" y="129" text-anchor="middle" dominant-baseline="central">Sujet + contenu</text></g>
+<g class="r"><rect x="470" y="90" width="170" height="56" rx="8"/><text class="t" x="555" y="109" text-anchor="middle" dominant-baseline="central">Base RAG</text><text class="ts" x="555" y="129" text-anchor="middle" dominant-baseline="central">Contacts + documents</text></g>
+<line class="ln" x1="410" y1="118" x2="468" y2="118" marker-end="url(#ar)"/>
+<line class="ln" x1="310" y1="146" x2="310" y2="170" marker-end="url(#ar)"/>
+<g class="a"><rect x="210" y="170" width="200" height="56" rx="8"/><text class="t" x="310" y="189" text-anchor="middle" dominant-baseline="central">A0 Sécurité</text><text class="ts" x="310" y="209" text-anchor="middle" dominant-baseline="central">Détecte l'injection</text></g>
+<line class="ln" x1="210" y1="198" x2="182" y2="198" marker-end="url(#ar)"/>
+<g class="b"><rect x="30" y="170" width="150" height="56" rx="8"/><text class="t" x="105" y="189" text-anchor="middle" dominant-baseline="central">Quarantaine</text><text class="ts" x="105" y="209" text-anchor="middle" dominant-baseline="central">Alerte utilisateur</text></g>
+<line class="ln" x1="310" y1="226" x2="310" y2="250" marker-end="url(#ar)"/>
+<g class="a"><rect x="210" y="250" width="200" height="56" rx="8"/><text class="t" x="310" y="269" text-anchor="middle" dominant-baseline="central">A1 Tri</text><text class="ts" x="310" y="289" text-anchor="middle" dominant-baseline="central">Seuil de confiance</text></g>
+<path class="rl" d="M555 146 L555 278 L412 278" marker-end="url(#ar)"/>
+<path class="ln" d="M310 306 L310 321"/><path class="ln" d="M105 321 L555 321"/>
+<path class="ln" d="M105 321 L105 334" marker-end="url(#ar)"/><path class="ln" d="M255 321 L255 334" marker-end="url(#ar)"/><path class="ln" d="M405 321 L405 334" marker-end="url(#ar)"/><path class="ln" d="M555 321 L555 334" marker-end="url(#ar)"/>
+<g class="b"><rect x="40" y="336" width="130" height="44" rx="8"/><text class="t" x="105" y="358" text-anchor="middle" dominant-baseline="central">Spam</text></g>
+<g class="b"><rect x="190" y="336" width="130" height="44" rx="8"/><text class="t" x="255" y="358" text-anchor="middle" dominant-baseline="central">Sans réponse</text></g>
+<g class="b"><rect x="340" y="336" width="130" height="44" rx="8"/><text class="t" x="405" y="358" text-anchor="middle" dominant-baseline="central">Important</text></g>
+<g class="b"><rect x="490" y="336" width="130" height="44" rx="8"/><text class="t" x="555" y="358" text-anchor="middle" dominant-baseline="central">Autre</text></g>
+<line class="ln" x1="105" y1="380" x2="105" y2="410" marker-end="url(#ar)"/><line class="ln" x1="255" y1="380" x2="255" y2="410" marker-end="url(#ar)"/>
+<g class="b"><rect x="40" y="412" width="130" height="44" rx="8"/><text class="t" x="105" y="434" text-anchor="middle" dominant-baseline="central">Dossier spam</text></g>
+<g class="b"><rect x="190" y="412" width="130" height="44" rx="8"/><text class="t" x="255" y="434" text-anchor="middle" dominant-baseline="central">Archive</text></g>
+<path class="ln" d="M405 380 L405 470"/><path class="ln" d="M555 380 L555 470 L310 470 L310 498" marker-end="url(#ar)"/>
+<g class="a"><rect x="210" y="500" width="200" height="56" rx="8"/><text class="t" x="310" y="519" text-anchor="middle" dominant-baseline="central">A2 Réponse</text><text class="ts" x="310" y="539" text-anchor="middle" dominant-baseline="central">Génère avec le RAG</text></g>
+<path class="rl" d="M640 118 L655 118 L655 528 L412 528" marker-end="url(#ar)"/>
+<text class="ts" x="256" y="574" dominant-baseline="central">Important</text><text class="ts" x="356" y="574" dominant-baseline="central">Autre</text>
+<line class="ln" x1="250" y1="556" x2="250" y2="588" marker-end="url(#ar)"/>
+<g class="h"><rect x="80" y="590" width="200" height="56" rx="8"/><text class="t" x="180" y="609" text-anchor="middle" dominant-baseline="central">Validation utilisateur</text><text class="ts" x="180" y="629" text-anchor="middle" dominant-baseline="central">Importants seulement</text></g>
+<path class="ln" d="M80 618 L60 618 L60 528 L208 528" marker-end="url(#ar)"/><text class="ts" x="66" y="574" dominant-baseline="central">refus</text>
+<line class="ln" x1="350" y1="556" x2="350" y2="688" marker-end="url(#ar)"/>
+<path class="ln" d="M180 646 L180 712 L208 712" marker-end="url(#ar)"/>
+<g class="a"><rect x="210" y="690" width="200" height="44" rx="8"/><text class="t" x="310" y="712" text-anchor="middle" dominant-baseline="central">A3 Envoi</text></g>
+<line class="ln" x1="410" y1="712" x2="448" y2="712" marker-end="url(#ar)"/>
+<g class="b"><rect x="450" y="690" width="100" height="44" rx="8"/><text class="t" x="500" y="712" text-anchor="middle" dominant-baseline="central">Log</text></g>
+</svg>
+</div>
+<div class="legend"><span class="l1">Agent LLM</span><span class="l2">Intervention humaine</span><span class="l3">Base RAG</span></div>
+
+<h2>3. Étapes et agents</h2>
+<div class="wrap"><table>
+<tr><th>Étape</th><th>Rôle</th><th>Entrée</th><th>Sortie</th></tr>
+<tr><td>Réception</td><td>Récupérer le mail (IMAP ou API Gmail/Outlook).</td><td>Mail brut</td><td>Objet <code>Mail</code></td></tr>
+<tr><td>Extraction</td><td>Extraire expéditeur, sujet, corps texte, pièces jointes, fil de discussion.</td><td><code>Mail</code></td><td><code>MailInfo</code></td></tr>
+<tr><td>A0 Sécurité</td><td>Modèle dédié. Détecte les tentatives d'injection de prompt et le contenu piégé.</td><td><code>MailInfo</code></td><td><code>{suspect: bool, raison, score}</code></td></tr>
+<tr><td>A1 Tri</td><td>Classe le mail dans une catégorie avec un score de confiance. Interroge le RAG pour connaître l'expéditeur.</td><td><code>MailInfo</code> + contexte RAG</td><td><code>{categorie, sous_categorie, confiance}</code></td></tr>
+<tr><td>A2 Réponse</td><td>Rédige un brouillon à partir du mail et du contexte RAG.</td><td><code>MailInfo</code> + contexte RAG + consignes de la catégorie</td><td><code>Brouillon</code></td></tr>
+<tr><td>A4 Résumé</td><td>Résume le contenu du mail. Si le contenu appelle une réponse, pré-génère un brouillon. L'utilisateur peut lire le résumé seul ou pousser le brouillon.</td><td><code>MailInfo</code></td><td><code>{resume, needs_reply, brouillon}</code></td></tr>
+<tr><td>Validation</td><td>L'utilisateur accepte, refuse ou corrige (mails importants).</td><td><code>Brouillon</code></td><td><code>{decision, texte_final}</code></td></tr>
+<tr><td>A3 Envoi</td><td>Envoie la réponse et écrit le log.</td><td>Texte final</td><td>Mail envoyé + entrée de log</td></tr>
+</table></div>
+
+<h2>4. Règles de routage</h2>
+<ol>
+<li><strong>A0 d'abord.</strong> Si <code>suspect = true</code> : le mail va en quarantaine, l'utilisateur est alerté, aucun autre agent ne traite le contenu.</li>
+<li><strong>A1 ensuite.</strong> Si <code>confiance</code> est inférieure au seuil (0,7 par défaut, 0,9 pour « spam »), le mail est traité comme « important » : il passe par la validation utilisateur.</li>
+<li><strong>Spam</strong> : déplacé dans un dossier spam consultable. Jamais supprimé.</li>
+<li><strong>Sans réponse</strong> (newsletters, notifications, promotions) : archivé, aucune réponse générée.</li>
+<li><strong>Important</strong> : A2 génère un brouillon, puis validation utilisateur obligatoire avant l'envoi.</li>
+<li><strong>Autre</strong> : A2 génère la réponse, A3 l'envoie directement.</li>
+</ol>
+
+<h3>Boucle de validation</h3>
+<ul>
+<li><code>accepte</code> : envoi du brouillon tel quel.</li>
+<li><code>corrige</code> : l'utilisateur modifie le texte, puis l'envoie lui-même ou le fait envoyer.</li>
+<li><code>refuse</code> : retour à A2 pour une nouvelle génération, avec le motif du refus si l'utilisateur en donne un.</li>
+<li>Limite de 3 refus par mail. Ensuite, le mail passe en réponse manuelle.</li>
+<li>Enregistrer chaque correction et chaque refus (utile pour ajuster les prompts et le seuil).</li>
+</ul>
+
+<h3>A4 Résumé</h3>
+<p>L'agent A4 est déclenché à la sélection d'un mail. Il produit un résumé de 3 à 5 phrases, puis décide si le mail nécessite une réponse. S'il en nécessite une, il pré-génère un brouillon. L'utilisateur peut soit pousser le brouillon, soit seulement consulter le résumé. A4 ne modifie jamais le mail et ne l'envoie pas.</p>
+
+<h2>5. Catégories</h2>
+<div class="wrap"><table>
+<tr><th>Catégorie</th><th>Sous-catégories suggérées</th><th>Traitement</th></tr>
+<tr><td>Spam</td><td>Démarchage, phishing, publicité</td><td>Dossier spam</td></tr>
+<tr><td>Sans réponse</td><td>Newsletter, notification automatique, promotion</td><td>Archive</td></tr>
+<tr><td>Important</td><td>Demande de rendez-vous, facture ou paiement, demande d'information client, candidature, support ou réclamation, personnel</td><td>Réponse + validation</td></tr>
+<tr><td>Autre</td><td>Tout ce qui n'entre pas ailleurs</td><td>Réponse + envoi direct</td></tr>
+</table></div>
+<p class="mut">Les sous-catégories servent à choisir un prompt de réponse adapté. La liste doit être configurable (fichier de configuration), pas codée en dur.</p>
+
+<h2>6. Base RAG</h2>
+<ul>
+<li>Indexation par <strong>personne</strong> : historique des mails échangés avec chaque contact.</li>
+<li>Indexation des <strong>documents</strong>, rattachés à une personne ou généraux.</li>
+<li>Chaque fragment indexé porte des métadonnées : <code>contact_id</code>, <code>type</code> (mail ou document), <code>date</code>, <code>source</code>.</li>
+<li>Requête : identifier l'expéditeur, filtrer par <code>contact_id</code>, puis recherche sémantique sur le sujet et le contenu du mail.</li>
+<li>Mise à jour : chaque mail envoyé ou reçu enrichit l'historique du contact. Les documents sont ajoutés par l'utilisateur.</li>
+<li>Utilisé par A1 (identifier l'expéditeur et son importance) et par A2 (rédiger avec le bon contexte).</li>
+</ul>
+
+<h3>Base de connaissances des contacts</h3>
+<p>Le fichier <code>context/recipients.json</code> contient, pour chaque contact, son nom, son rôle, son organisation et des notes libres. L'interface web affiche ces informations pour l'expéditeur du mail sélectionné, comme un panneau « Hermes » : on voit qui est le contact et ce que l'IA sait de lui avant de lire ou de répondre au mail. La liste des contacts connus permet d'en sélectionner un et de consulter ses notes. Lorsqu'une réponse est envoyée, le texte de la réponse est ajouté aux notes du contact, ce qui enrichit la base de connaissances pour les prochaines interactions.</p>
+
+<h2>7. Sécurité</h2>
+<ul>
+<li>Le contenu d'un mail est toujours traité comme une <strong>donnée</strong>, jamais comme une instruction. Il est placé dans un bloc délimité, séparé du prompt système.</li>
+<li>A0 est un modèle ou agent distinct, avec son propre prompt, sans accès à l'envoi de mails ni au RAG.</li>
+<li>Les agents A1 et A2 n'ont pas d'outil capable d'envoyer ou de supprimer. Seul A3 envoie, et seulement un texte validé ou issu d'une catégorie autorisée.</li>
+<li>Ne jamais inclure dans une réponse des informations d'un contact A à destination d'un contact B, sauf autorisation explicite.</li>
+</ul>
+
+<h2>8. Log</h2>
+<p>Pour chaque mail : identifiant, horodatage, résultat de A0, catégorie et confiance de A1, nombre de générations, décision de l'utilisateur, texte envoyé, statut d'envoi. Format JSON Lines, un fichier par jour.</p>
+
+<h2>9. Contrats de données</h2>
+<pre>MailInfo   { id, expediteur, destinataires[], sujet, corps, pieces_jointes[], fil_id, date }
+A0 sortie  { suspect: bool, raison: str, score: float }
+A1 sortie  { categorie: "spam"|"sans_reponse"|"important"|"autre",
+             sous_categorie: str, confiance: float }
+Brouillon  { mail_id, texte, sources_rag[], tentative: int }
+Validation { mail_id, decision: "accepte"|"corrige"|"refuse", texte_final?, motif? }</pre>
+<p>Toutes les sorties d'agents sont du JSON validé par un schéma. Une sortie invalide déclenche un nouvel essai, puis une remontée à l'utilisateur.</p>
+
+<h2>10. Livrables attendus</h2>
+<ul>
+<li>Un projet Python structuré : un module par agent, un module RAG, un module de routage, un module de log.</li>
+<li>Un fichier de configuration (seuils, catégories, prompts, modèle utilisé par agent).</li>
+<li>Des prompts séparés du code, un fichier par agent.</li>
+<li>Une interface simple de validation (CLI ou page web) : accepter, corriger, refuser.</li>
+<li>Des tests : routage de chaque catégorie, seuil de confiance, boucle de refus, injection de prompt, mail sans réponse.</li>
+<li>Un README avec l'installation et un exemple de lancement.</li>
+<li>Un mode « simulation » qui traite des mails d'exemple sans rien envoyer.</li>
+</ul>
+
+<h2>11. Hypothèses à confirmer</h2>
+<ul>
+<li>Fournisseur de messagerie (Gmail, Outlook, IMAP générique) : à définir. Par défaut, IMAP/SMTP.</li>
+<li>Modèle de langage et base vectorielle : au choix de l'agent, en les rendant remplaçables par la configuration.</li>
+<li>Les pièces jointes sont lues uniquement si leur texte est extractible (PDF, texte). Sinon elles sont signalées sans analyse.</li>
+</ul>
+</main>
+</body>
+</html>

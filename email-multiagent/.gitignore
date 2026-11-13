@@ -1,0 +1,16 @@
+# Build output
+target/
+*.class
+
+# Runtime state
+logs/
+
+# Editors / OS
+.DS_Store
+.idea/
+*.iml
+.vscode/
+
+# Local secrets (if you move credentials out of config.properties)
+config.local.properties
+.env

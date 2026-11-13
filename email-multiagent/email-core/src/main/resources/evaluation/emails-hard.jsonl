@@ -1,0 +1,14 @@
+# Harder routing set: indirect wording (few of the router's keywords) and ambiguous messages.
+# Labels are the most defensible category; the "ambiguous" ones are subjective by nature.
+{"sender":"lea.martin@etu.uni.fr","recipient":"lecturer@uni.fr","subject":"Absence lundi","body":"Bonjour, je ne pourrai pas venir lundi matin car j'ai un rendez-vous médical. Pouvez-vous me dire ce que j'ai manqué ? Cordialement, Léa Martin (M1 IA)","expected":"STUDENT"}
+{"sender":"tom.okafor@etu.uni.fr","recipient":"lecturer@uni.fr","subject":"Tuteur de stage","body":"Bonjour Professeur, je suis étudiant en M2 et je souhaiterais vous avoir comme tuteur pour mon stage de fin d'études. Seriez-vous disponible ?","expected":"STUDENT"}
+{"sender":"sofia.lindqvist@uni.fr","recipient":"lecturer@uni.fr","subject":"Sujet de TP","body":"Salut, tu peux relire mon sujet de TP avant jeudi ? On se coordonne sur les barèmes pour que ce soit équitable entre les groupes.","expected":"TEACHER"}
+{"sender":"compta@uni.fr","recipient":"lecturer@uni.fr","subject":"Remboursement de mission","body":"Merci de nous envoyer vos justificatifs pour le remboursement de votre déplacement à Lyon avant la fin du mois.","expected":"ADMINISTRATION"}
+{"sender":"rh@uni.fr","recipient":"lecturer@uni.fr","subject":"Contrat du doctorant","body":"Le service RH vous informe que le contrat du doctorant doit être signé par vos soins avant le 30.","expected":"ADMINISTRATION"}
+{"sender":"karim.benali@lab.fr","recipient":"lecturer@uni.fr","subject":"Résultats prêts","body":"Les expériences sur le corpus sont terminées, j'ai déposé les résultats sur le dépôt commun. On soumet à ACL ?","expected":"RESEARCH"}
+{"sender":"partner@company.example","recipient":"lecturer@uni.fr","subject":"Consortium","body":"Our next consortium meeting is on March 12. Please send your deliverable D2.3 before then.","expected":"RESEARCH"}
+{"sender":"friend@mail.example","recipient":"lecturer@uni.fr","subject":"Bonne année","body":"Meilleurs voeux pour 2027, à bientôt j'espère !","expected":"GENERIC"}
+{"sender":"lea.martin@etu.uni.fr","recipient":"lecturer@uni.fr","subject":"Note du projet","body":"Bonjour, j'aimerais comprendre la note que j'ai obtenue pour mon projet de MAS. Pouvez-vous m'expliquer le barème ?","expected":"STUDENT"}
+{"sender":"scolarite@uni.fr","recipient":"lecturer@uni.fr","subject":"Cours de mardi","body":"Votre cours de mardi est déplacé en salle C112 à cause de travaux dans le bâtiment B.","expected":"ADMINISTRATION"}
+{"sender":"helene.dubois@uni.fr","recipient":"lecturer@uni.fr","subject":"Point sur SuperMASProject et la scolarité","body":"Pouvons-nous faire un point sur l'avancement de SuperMASProject ? Il faudra aussi que la scolarité valide les heures des vacataires.","expected":"RESEARCH"}
+{"sender":"unknown@mail.example","recipient":"lecturer@uni.fr","subject":"Demande","body":"Bonjour, pourriez-vous me rappeler quand vous avez un instant ? Merci.","expected":"GENERIC"}
