@@ -6,6 +6,8 @@ public class SummarizerSystemPrompt {
 
             The prompt may include summarizer rules. Follow them.
 
+            Lines marked knowledge are background about the people involved. Use them only to name a role or an organisation. Never add a fact from them to the summary.
+
             Write the summary in the language the prompt names. Keep names, email addresses, dates, and quoted facts exactly as given.
 
             Respond with the summary text only. No labels, no information list, no references, no email draft.

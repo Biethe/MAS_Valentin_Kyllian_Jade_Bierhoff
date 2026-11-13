@@ -57,4 +57,30 @@ class TolerantRepliesTest {
         assertEquals("huihui_ai/qwen3-abliterated:4b", OllamaChat.pick("llama3.1:8b", installed));
         assertNull(OllamaChat.pick("llama3.1:8b", List.of("llama3.2:1b", "qwen3:0.6b")));
     }
+
+    @Test void aRefusedRouteIsDecidedFromTheWords() {
+        String refusal = "I cannot respond to the instruction.";
+        assertEquals("type:\nREPLY\n\nclear:\nyes", TolerantReplies.normalizeFor(PlannerSystemPrompt.ROUTE,
+                "instruction:\nRéponds à Ada pour confirmer la réunion\nrules:\n", refusal));
+        assertEquals("type:\nSUMMARIZE\n\nclear:\nyes", TolerantReplies.routeByKeywords("instruction:\nRésume le mail d'Ada\nrules:\n"));
+        assertEquals("type:\nCOMPOSE\n\nclear:\nyes", TolerantReplies.routeByKeywords("instruction:\nÉcris à Tom pour le cours\nrules:\n"));
+        assertEquals("type:\nCHAT\n\nclear:\nyes", TolerantReplies.routeByKeywords("instruction:\nBonjour !\nrules:\n"));
+        assertEquals("type:\nREPLY\n\nclear:\nno", TolerantReplies.routeByKeywords("instruction:\nfais un truc\nrules:\n"));
+        String ok = "type: SUMMARIZE\nclear: yes";
+        assertEquals(ok, TolerantReplies.normalizeFor(PlannerSystemPrompt.ROUTE, "instruction:\nx", ok));
+    }
+
+    @Test void bareIdsBecomeEmailBlocks() {
+        assertEquals("email:\n1", TolerantReplies.normalize(PlannerSystemPrompt.LOCATE, "1").isEmpty() ? "" :
+                TolerantReplies.locateBlocks("1"));
+        assertEquals("email:\n2\n\nemail:\n3", TolerantReplies.locateBlocks("m2, m3"));
+        assertEquals("none", TolerantReplies.locateBlocks("none"));
+        assertEquals("email:\n4", TolerantReplies.locateBlocks("email:\n4"));
+    }
+
+    @Test void anUnsplitQueryIsOneInstruction() {
+        assertEquals("body:\nRésume le mail d'Ada", TolerantReplies.normalizeFor(PlannerSystemPrompt.SPLIT,
+                "Résume le mail d'Ada", "Résume le mail d'Ada"));
+        assertEquals("body:\nx", TolerantReplies.normalizeFor(PlannerSystemPrompt.SPLIT, "x", "body:\nx"));
+    }
 }

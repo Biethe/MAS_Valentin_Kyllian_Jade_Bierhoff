@@ -24,6 +24,8 @@ public class Brief {
     private List<Email> emails = new ArrayList<>();
     private Long replyToId;
     private List<String> doNotFollow = new ArrayList<>();
+    /** Background on the recipient and their profile (contact card, retrieved passages). Not part of the checklist. */
+    private List<String> knowledge = new ArrayList<>();
 
     public Brief() {}
 
@@ -71,6 +73,9 @@ public class Brief {
 
     public List<String> getDoNotFollow() { return doNotFollow; }
     public void setDoNotFollow(List<String> doNotFollow) { this.doNotFollow = emptyIfNull(doNotFollow); }
+
+    public List<String> getKnowledge() { return knowledge; }
+    public void setKnowledge(List<String> knowledge) { this.knowledge = emptyIfNull(knowledge); }
 
     private static <T> List<T> emptyIfNull(List<T> values) {
         return values == null ? new ArrayList<>() : values;

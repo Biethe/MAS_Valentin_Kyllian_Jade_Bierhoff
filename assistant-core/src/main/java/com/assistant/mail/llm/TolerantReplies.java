@@ -51,7 +51,47 @@ public final class TolerantReplies implements PlannerAgentClient, DrafterAgentCl
     static String normalizeFor(String system, String user, String reply) {
         String text = normalize(system, reply);
         if (PlannerSystemPrompt.READ.equals(system) && !hasFact(text)) return wholeDocument(user);
+        if (PlannerSystemPrompt.SPLIT.equals(system) && !Pattern.compile("(?im)^\\s*body\\s*:").matcher(text).find()) {
+            // not split: the whole query is one instruction
+            String query = user == null ? "" : user.strip();
+            return query.isEmpty() ? "" : "body:\n" + query;
+        }
+        if (PlannerSystemPrompt.LOCATE.equals(system)) return locateBlocks(text);
+        if (PlannerSystemPrompt.ROUTE.equals(system) && !Pattern.compile("(?im)^\\s*type\\s*:").matcher(text).find()) {
+            return routeByKeywords(user);
+        }
         return text;
+    }
+
+    /** "1" or "m1, m2" instead of "email:\n1": bare mail ids become email blocks. */
+    static String locateBlocks(String text) {
+        if (Pattern.compile("(?im)^\\s*(email|thread|attachment|userFile)\\s*:").matcher(text).find()) return text;
+        if (text.isBlank() || text.strip().equalsIgnoreCase("none")) return text;
+        Matcher m = Pattern.compile("\\b[mM]?(\\d+)\\b").matcher(text);
+        StringBuilder out = new StringBuilder();
+        while (m.find()) {
+            if (out.length() > 0) out.append("\n\n");
+            out.append("email:\n").append(m.group(1));
+        }
+        return out.length() == 0 ? text : out.toString();
+    }
+
+    /** A model that refuses or rambles instead of routing: decide from the words of the instruction. */
+    static String routeByKeywords(String user) {
+        String instruction = user == null ? "" : user;
+        int start = instruction.indexOf("instruction:");
+        if (start >= 0) instruction = instruction.substring(start + "instruction:".length());
+        int rules = instruction.indexOf("\nrules:");
+        if (rules >= 0) instruction = instruction.substring(0, rules);
+        String t = java.text.Normalizer.normalize(instruction.toLowerCase(java.util.Locale.ROOT),
+                java.text.Normalizer.Form.NFD).replaceAll("\\p{M}+", "");
+        String type;
+        if (t.matches("(?s).*(resum|summar|synthes|recap).*")) type = "SUMMARIZE";
+        else if (t.matches("(?s).*(repon|reply|answer|reagi).*")) type = "REPLY";
+        else if (t.matches("(?s).*(ecri|redig|compos|write|draft|envoi|send|prepar).*")) type = "COMPOSE";
+        else if (t.strip().matches("(?s)(bonjour|salut|hello|hi|hey|merci|thanks|thank you)\\b.*")) type = "CHAT";
+        else return "type:\nREPLY\n\nclear:\nno";
+        return "type:\n" + type + "\n\nclear:\nyes";
     }
 
     /** True when the reply holds at least one real {@code body:} fact (not an echoed template). */

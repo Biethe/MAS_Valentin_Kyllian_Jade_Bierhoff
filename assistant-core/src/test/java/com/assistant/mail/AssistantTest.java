@@ -95,4 +95,32 @@ class AssistantTest {
         Assistant a = new Assistant(InMemoryMailbox.demo(), lazy, base, base, "lazy", () -> { });
         assertEquals(1, a.ask("Résume le mail d'Ada").summaries.size());
     }
+
+    @Test void searchWordsPreferNamesThenLongWords() {
+        assertEquals(java.util.List.of("Dubois", "Prof", "rendez-vous", "confirmer"),
+                com.assistant.mail.workflow.Planner.searchWords("Réponds à la Prof. Dubois pour confirmer le rendez-vous"));
+    }
+
+    @Test void aModelThatNeverSearchesStillFindsTheMailByItsWords() {
+        com.assistant.mail.llm.ScriptedModels base = new com.assistant.mail.llm.ScriptedModels();
+        com.assistant.mail.service.agent.PlannerAgentClient clumsy = (system, user) ->
+                com.assistant.mail.prompt.PlannerSystemPrompt.TOOLS.equals(system) ? "read_mail" : base.complete(system, user);
+        Assistant a = new Assistant(InMemoryMailbox.demo(), clumsy, base, base, "clumsy", () -> { });
+        assertEquals(1, a.ask("Résume le mail d'Ada").summaries.size());
+    }
+
+    @Test void aReplyToTheUsersOwnAddressIsCorrectedToTheSender() {
+        com.assistant.mail.model.brief.Brief brief = new com.assistant.mail.model.brief.Brief();
+        brief.setTo(new java.util.ArrayList<>(java.util.List.of("moi@u.test")));
+        com.assistant.mail.workflow.Planner.fixReplyRecipient(brief, InMemoryMailbox.demo().all().get(0));
+        assertEquals(java.util.List.of("ada@u.test"), brief.getTo());
+        brief.setTo(new java.util.ArrayList<>(java.util.List.of("tom@u.test")));
+        com.assistant.mail.workflow.Planner.fixReplyRecipient(brief, InMemoryMailbox.demo().all().get(0));
+        assertEquals(java.util.List.of("tom@u.test"), brief.getTo()); // a deliberate other recipient is kept
+    }
+
+    @Test void addressesLoseBracketsQuotesAndPlaceholders() {
+        assertEquals(java.util.List.of("a@b.c", "d@e.f"), com.assistant.mail.workflow.Planner.addresses(
+                java.util.List.of("[a@b.c]", "<d@e.f>, \"a@b.c\"", "-", "[]", "none")));
+    }
 }

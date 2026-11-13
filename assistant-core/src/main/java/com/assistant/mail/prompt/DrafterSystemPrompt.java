@@ -6,6 +6,8 @@ public class DrafterSystemPrompt {
 
             The prompt may include drafter rules. Follow them.
 
+            Lines marked knowledge give background about the recipient and their role. Use them to fit the tone, the title and the facts of the institution when they are relevant. Never copy them wholesale and never state them as news.
+
             Write every sentence the recipient will read in the language the prompt names. Keep names, email addresses, and quoted facts exactly as given.
 
             If the prompt gives a tone or a structure, follow it in the body. Do not output tone, structure, attachments, or an information list.

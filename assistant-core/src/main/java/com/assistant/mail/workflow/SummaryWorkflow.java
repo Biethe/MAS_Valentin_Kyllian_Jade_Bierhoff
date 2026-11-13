@@ -145,6 +145,7 @@ public final class SummaryWorkflow {
         text.append("tone: ").append(brief.getTone() == null ? "" : brief.getTone().name()).append('\n');
         text.append("structure: ").append(brief.getStructure() == null ? "" : brief.getStructure().name()).append('\n');
         for (String note : brief.getStyleNotes()) text.append("styleNote: ").append(note).append('\n');
+        for (String item : brief.getKnowledge()) text.append("knowledge: ").append(item.replace('\n', ' ')).append('\n');
         for (Information fact : brief.getFacts()) text.append("fact: ").append(text(fact.getBody())).append('\n');
         for (Email email : brief.getEmails()) {
             if (email.getId() != null) text.append("email: ").append(email.getId()).append('\n');

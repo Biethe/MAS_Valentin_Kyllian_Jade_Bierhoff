@@ -49,10 +49,34 @@ public class Planner {
 
     private final MailClientMcp mail;
     private final PlannerAgentClient agent;
+    private com.assistant.mail.context.KnowledgeSource knowledge;
 
     public Planner(MailClientMcp mail, PlannerAgentClient agent) {
         this.mail = mail;
         this.agent = agent;
+    }
+
+    /** Optional: contact cards and profile passages added to each brief. */
+    public Planner withKnowledge(com.assistant.mail.context.KnowledgeSource source) {
+        this.knowledge = source;
+        return this;
+    }
+
+    private void addKnowledge(Brief brief, Instruction instruction, List<Information> facts, Selection selection) {
+        if (knowledge == null) return;
+        String recipient = brief.getTo().isEmpty() ? "" : brief.getTo().get(0);
+        boolean aboutTheSender = brief.getTask() == InstructionType.REPLY || brief.getTask() == InstructionType.SUMMARIZE;
+        if ((recipient.isBlank() || aboutTheSender) && !selection.emails.isEmpty()
+                && selection.emails.get(0).getSender() != null && selection.emails.get(0).getSender().getEmail() != null) {
+            recipient = selection.emails.get(0).getSender().getEmail();
+        }
+        StringBuilder query = new StringBuilder(instruction.getBody() == null ? "" : instruction.getBody());
+        for (Information fact : facts) query.append(' ').append(fact.getBody());
+        try {
+            brief.setKnowledge(new ArrayList<>(knowledge.knowledgeFor(recipient, brief.getRecipientRole(), query.toString())));
+        } catch (RuntimeException e) {
+            brief.setKnowledge(new ArrayList<>()); // background is optional: never block the task on it
+        }
     }
 
     public Run run(Request request, LongTermMemory memory) {
@@ -134,6 +158,7 @@ public class Planner {
         Language language = Languages.output(instruction.getType(), instruction.getBody(), userLanguage, mailBody);
         Brief brief = brief(instruction, facts, selection, memory, language);
         brief.setAttachments(selection.files);
+        addKnowledge(brief, instruction, facts, selection);
         for (Map<String, String> gap : blocks(agent.complete(PlannerSystemPrompt.CRITIC, criticPrompt(instruction, brief, facts)))) {
             BriefPart part = enumValue(BriefPart.class, gap.get("part"));
             String argument = text(gap.get("argument"));
@@ -182,6 +207,8 @@ public class Planner {
         String rejection = "";
         int rejects = 0;
         int premature = 0;
+        String blocked = null;
+        boolean forbidden = false; // a tool outside the allowed three: never worked around
         for (int step = 0; step < 4; step++) {
             String raw = agent.complete(PlannerSystemPrompt.TOOLS, toolPrompt(body, emails, rejection));
             List<ToolGate.Call> calls = toolCalls(raw);
@@ -201,13 +228,17 @@ public class Planner {
                 String why = ToolGate.deny(call, mails, threads, null, false);
                 if (why != null) {
                     bad.append(why).append('\n');
+                    if (!java.util.Set.of("search_mail", "read_mail", "read_thread").contains(call.name())) forbidden = true;
                     continue;
                 }
                 String failed = runCall(call, mails, threads, emails, found);
                 if (failed != null) bad.append(failed).append('\n');
             }
             if (!bad.isEmpty()) {
-                if (++rejects > 1) return new Gather(emails, found, bad.toString().strip());
+                if (++rejects > 1) {
+                    blocked = bad.toString().strip();
+                    break;
+                }
                 rejection = bad.toString().strip();
             } else if (emails.size() == emailCount && found.size() == threadCount) {
                 break;
@@ -215,7 +246,41 @@ public class Planner {
                 rejection = "";
             }
         }
-        return new Gather(emails, found, null);
+        if (emails.isEmpty() && found.isEmpty() && !forbidden) {
+            // the model never produced a usable search: try the distinctive words of the instruction
+            for (String word : searchWords(body)) {
+                List<Email> hits;
+                try {
+                    hits = mail.searchMail(word);
+                } catch (RuntimeException e) {
+                    continue;
+                }
+                if (hits == null || hits.isEmpty()) continue;
+                for (Email email : hits) note(email, mails, threads, emails);
+                blocked = null;
+                break;
+            }
+        }
+        return new Gather(emails, found, emails.isEmpty() && found.isEmpty() ? blocked : null);
+    }
+
+    /** Capitalised words first (names), longest first, then other long words. At most four. */
+    public static List<String> searchWords(String body) {
+        List<String> names = new ArrayList<>();
+        List<String> others = new ArrayList<>();
+        String[] tokens = body.split("[^\\p{L}\\p{N}@._-]+");
+        for (int i = 0; i < tokens.length; i++) {
+            String w = tokens[i].replaceAll("^[._-]+|[._-]+$", "");
+            if (w.length() < 3) continue;
+            boolean capital = Character.isUpperCase(w.codePointAt(0));
+            if (capital && i > 0 && !names.contains(w)) names.add(w);
+            else if (!capital && w.length() >= 6 && !others.contains(w)) others.add(w);
+        }
+        names.sort((a, b) -> b.length() - a.length());
+        others.sort((a, b) -> b.length() - a.length());
+        List<String> words = new ArrayList<>(names);
+        words.addAll(others);
+        return words.subList(0, Math.min(4, words.size()));
     }
 
     private String runCall(ToolGate.Call call, Set<String> mails, Set<String> threads, List<Email> emails, List<EmailThread> found) {
@@ -319,8 +384,11 @@ public class Planner {
                 briefPrompt(instruction, facts, selection, memory, language));
         Brief brief = new Brief();
         brief.setTask(instruction.getType());
-        brief.setTo(values(raw, "to"));
-        brief.setCc(values(raw, "cc"));
+        brief.setTo(addresses(values(raw, "to")));
+        brief.setCc(addresses(values(raw, "cc")));
+        if (instruction.getType() == InstructionType.REPLY && !selection.emails.isEmpty()) {
+            fixReplyRecipient(brief, selection.emails.get(0));
+        }
         brief.setLanguage(language);
         brief.setRecipientRole(emptyToNull(field(raw, "recipientRole")));
         brief.setTone(enumValue(DraftTone.class, field(raw, "tone")));
@@ -334,6 +402,29 @@ public class Planner {
         brief.setContextFiles(selection.userFiles);
         brief.setEmails(selection.emails);
         return brief;
+    }
+
+    /** {@code [a@b.c]}, {@code <a@b.c>}, {@code "a@b.c"} and placeholders like {@code -} or {@code []} become clean addresses. */
+    public static List<String> addresses(List<String> raw) {
+        List<String> out = new ArrayList<>();
+        for (String value : raw) {
+            for (String part : value.split(",")) {
+                String a = part.strip().replaceAll("^[\\[<\"'`(\\s]+|[\\]>\"'`)\\s]+$", "");
+                if (a.isEmpty() || a.equals("-") || a.equalsIgnoreCase("none") || a.equalsIgnoreCase("empty")) continue;
+                if (!out.contains(a)) out.add(a);
+            }
+        }
+        return out;
+    }
+
+    /** A reply goes to the sender. A model that wrote the user's own address (or nothing) is corrected. */
+    public static void fixReplyRecipient(Brief brief, Email original) {
+        String sender = original.getSender() == null ? null : original.getSender().getEmail();
+        if (sender == null || sender.isBlank()) return;
+        boolean hasSender = brief.getTo().stream().anyMatch(sender::equalsIgnoreCase);
+        boolean ownAddress = brief.getTo().stream().anyMatch(
+                a -> original.getRecipients().stream().anyMatch(a::equalsIgnoreCase));
+        if (!hasSender && (brief.getTo().isEmpty() || ownAddress)) brief.setTo(new ArrayList<>(List.of(sender)));
     }
 
     private Checklist checklist(Brief brief) {

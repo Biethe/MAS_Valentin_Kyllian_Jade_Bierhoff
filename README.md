@@ -43,6 +43,19 @@ consignes (famille llama3.1, qwen3, qwen2.5…) et le dit ; les petits modèles 
 (appel d'outil écrit `search_mail("Ada")`, champs sur une ligne, faits recopiés du gabarit) sont corrigés
 sans changer le contenu (`TolerantReplies`).
 
+## Connaissance par profil (RAG) et fiches contact
+
+Le Planner ajoute au brief du rédacteur et du résumeur (lignes `knowledge:`, hors checklist) :
+
+1. la **fiche du contact** (`context/recipients.json` : nom, rôle, organisation, notes) ;
+2. les **passages les plus proches** du profil du destinataire : `context/<profil>/*.txt|md`
+   (`student`, `teacher`, `administration`, `research`). Le profil vient du rôle du destinataire, sinon de la
+   fiche ; sans rôle connu, tous les profils sont interrogés.
+
+La recherche utilise des embeddings Ollama (`all-minilm:22m`) quand le modèle est installé, sinon un
+recouvrement de mots. Options : `--context-dir DIR` (ou `CONTEXT_DIR`), `--no-context`, `--embedding-model`.
+Ajouter un profil = créer un dossier et y déposer des fichiers texte, sans recompiler.
+
 ## État
 
 - Compilent et sont testés : les trois modules (`./run.sh test`).

@@ -1,0 +1,4 @@
+Course: Multi-Agent Systems (M2 Artificial Intelligence).
+The assignment deadline is announced in the course syllabus. The student
+should check the LMS for the official date. The lecturer is responsible for
+confirming any deadline.

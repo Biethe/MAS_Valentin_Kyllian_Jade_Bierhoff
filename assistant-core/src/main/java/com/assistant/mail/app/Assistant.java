@@ -22,6 +22,7 @@ import java.util.List;
 /** The assistant behind every front end (terminal, web, benchmark): one Turn over one mailbox. */
 public final class Assistant implements AutoCloseable {
     private final Turn turn;
+    private final Planner planner;
     private final MailClientMcp mail;
     private final LongTermMemory memory = new LongTermMemory();
     private final String description;
@@ -33,7 +34,8 @@ public final class Assistant implements AutoCloseable {
         this.mail = mail;
         this.description = description;
         this.onClose = onClose;
-        this.turn = new Turn(new Planner(mail, planner),
+        this.planner = new Planner(mail, planner);
+        this.turn = new Turn(this.planner,
                 new WriterWorkflow(drafter, mail, memory, null),
                 new SummaryWorkflow(summarizer, memory, null));
     }
@@ -52,7 +54,8 @@ public final class Assistant implements AutoCloseable {
         String mailboxName = config.mailbox == AssistantConfig.Mailbox.MCP ? "MCP mailbox (MAILBOX_CMD)" : "demo mailbox";
         if (config.llm == AssistantConfig.Llm.SCRIPTED) {
             ScriptedModels models = new ScriptedModels();
-            return new Assistant(mail, models, models, models, "scripted models + " + mailboxName, close);
+            return new Assistant(mail, models, models, models, "scripted models + " + mailboxName, close)
+                    .withKnowledge(knowledge(config, null));
         }
         OllamaChat probe = new OllamaChat(config.ollamaUrl, config.model);
         if (!probe.reachable()) {
@@ -70,8 +73,26 @@ public final class Assistant implements AutoCloseable {
         }
         com.assistant.mail.llm.TolerantReplies tolerant =
                 com.assistant.mail.llm.TolerantReplies.around(new OllamaChat(config.ollamaUrl, model));
+        com.assistant.mail.context.Embedder embedder = OllamaChat.installed(config.ollamaUrl).stream()
+                .anyMatch(n -> n.startsWith(config.embeddingModel))
+                ? new com.assistant.mail.context.OllamaEmbedder(config.ollamaUrl, config.embeddingModel) : null;
         return new Assistant(mail, tolerant.planner(), tolerant.drafter(), tolerant.summarizer(),
-                model + " + " + mailboxName, close);
+                model + " + " + mailboxName, close).withKnowledge(knowledge(config, embedder));
+    }
+
+    /** Per-profile retrieval and contact cards from {@code config.contextDir}; null when disabled or missing. */
+    static com.assistant.mail.context.KnowledgeSource knowledge(AssistantConfig config,
+                                                                com.assistant.mail.context.Embedder embedder) {
+        if (config.contextDir == null) return null;
+        java.nio.file.Path dir = java.nio.file.Path.of(config.contextDir);
+        if (!java.nio.file.Files.isDirectory(dir)) return null;
+        return com.assistant.mail.context.ProfileKnowledge.open(dir, embedder, config.topK);
+    }
+
+    /** Adds contact cards and per-profile retrieval to every brief. Returns this for chaining. */
+    public Assistant withKnowledge(com.assistant.mail.context.KnowledgeSource source) {
+        if (source != null) planner.withKnowledge(source);
+        return this;
     }
 
     /** Handles one user message. Calls are serialised: the memory and the mailbox are shared. */
