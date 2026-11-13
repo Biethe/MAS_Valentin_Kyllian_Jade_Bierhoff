@@ -77,12 +77,12 @@ public final class SummaryWorkflow {
                 + " words; keep every date, deadline, place and required action; remove greetings, thanks and side remarks\n";
     }
 
-    /** Word budget of a summary: under half of the source words (minus a margin), or -1 when the sources are tiny. */
+    /** Word budget of a summary: at most half of the source words (minus one word), or -1 when the sources are tiny. */
     static int lengthLimit(Brief brief) {
         int source = 0;
         for (var email : brief.getEmails()) source += words(email.getBody());
         if (source == 0) for (var fact : brief.getFacts()) source += words(fact.getBody());
-        return source < 40 ? -1 : Math.max(20, source / 2 - 5);
+        return source < 40 ? -1 : Math.max(20, source / 2 - 1);
     }
 
     private static final java.util.regex.Pattern DATE = java.util.regex.Pattern.compile(
