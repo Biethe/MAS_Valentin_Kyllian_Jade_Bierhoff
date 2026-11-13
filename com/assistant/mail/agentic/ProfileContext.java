@@ -70,6 +70,11 @@ final class ProfileContext {
         return out;
     }
 
+    /** The cards of the people the request names, as prompt lines (see {@link People}). */
+    List<String> people(String request) {
+        return People.mentioned(dir, request);
+    }
+
     /** Contact cards matching a name (surname, first name or address), as lookup_contact prints them; null if none. */
     String contact(String name) {
         Path file = dir.resolve("recipients.json");
@@ -84,9 +89,7 @@ final class ProfileContext {
                     String email = c.path("email").asString(entry.getKey());
                     String hay = (c.path("name").asString("") + " " + email).toLowerCase(Locale.ROOT);
                     if (hay.contains(part) && s.indexOf(email) < 0) {
-                        s.append(c.path("name").asString(email)).append(" <").append(email).append("> role: ")
-                                .append(c.path("role").asString("")).append(", ").append(c.path("organization").asString(""))
-                                .append(". ").append(c.path("notes").asString("")).append('\n');
+                        s.append(People.describe(c, entry.getKey())).append('\n');
                     }
                 }
             }

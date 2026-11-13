@@ -69,6 +69,26 @@ public final class AgenticUiCheck {
             assert call("DELETE", "/legal/files/clauses.md", null).statusCode() == 200;
             assert call("GET", "/legal/files/clauses.md", null).statusCode() == 404;
             assert !Files.exists(context.getParent().resolve("x.txt")) : "nothing written outside the context folder";
+            // knowledge about people: cards, validation, learning from a validated reply, mention detection
+            String people = base.replace("/api/agents", "/api/people");
+            assert send("POST", people, "{\"email\":\"Ada@U.test\",\"name\":\"Ada Lovelace\",\"role\":\"Professor\",\"organization\":\"Univ\",\"notes\":\"Formal French.\"}").statusCode() == 200;
+            assert send("POST", people, "{\"email\":\"not an address\"}").statusCode() == 400;
+            assert send("POST", people + "/learn", "{\"email\":\"ada@u.test\",\"text\":\"Bonjour Madame, merci.\"}").statusCode() == 200;
+            assert send("POST", people + "/learn", "{\"email\":\"ada@u.test\",\"text\":\"  \"}").statusCode() == 400;
+            for (int i = 0; i < 4; i++) send("POST", people + "/learn", "{\"email\":\"ada@u.test\",\"text\":\"reply " + i + "\"}");
+            JsonNode cards = json(send("GET", people, null).body()).path("people");
+            assert cards.size() == 1 && cards.get(0).path("replies").size() == People.MAX_REPLIES : cards;
+            assert cards.get(0).path("notes").asString().equals("Formal French.");
+            send("POST", people, "{\"email\":\"ada@u.test\",\"name\":\"Ada L.\",\"role\":\"Prof\",\"organization\":\"U\",\"notes\":\"New note\"}");
+            assert json(send("GET", people, null).body()).path("people").get(0).path("replies").size() == People.MAX_REPLIES : "an edit keeps the replies";
+            assert People.mentioned(context, "Write to Lovelace tomorrow").isEmpty() : "name was edited";
+            assert People.mentioned(context, "Write to ada l. now").size() == 0 : "short part is not enough";
+            send("POST", people, "{\"email\":\"ada@u.test\",\"name\":\"Ada Lovelace\",\"role\":\"Prof\",\"organization\":\"U\",\"notes\":\"x\"}");
+            assert People.mentioned(context, "Write to Lovelace tomorrow").size() == 1;
+            assert People.mentioned(context, "Write to ada@u.test").size() == 1;
+            assert People.mentioned(context, "Write to the University office").isEmpty();
+            assert send("DELETE", people + "?email=ada%40u.test", null).statusCode() == 200;
+            assert send("DELETE", people + "?email=ada%40u.test", null).statusCode() == 404;
         } finally {
             server.stop(0);
         }
@@ -77,6 +97,12 @@ public final class AgenticUiCheck {
 
     private static HttpResponse<String> call(String method, String path, String body) throws Exception {
         HttpRequest.Builder b = HttpRequest.newBuilder(URI.create(base + path)).method(method,
+                body == null ? HttpRequest.BodyPublishers.noBody() : HttpRequest.BodyPublishers.ofString(body));
+        return http.send(b.build(), HttpResponse.BodyHandlers.ofString());
+    }
+
+    private static HttpResponse<String> send(String method, String url, String body) throws Exception {
+        HttpRequest.Builder b = HttpRequest.newBuilder(URI.create(url)).method(method,
                 body == null ? HttpRequest.BodyPublishers.noBody() : HttpRequest.BodyPublishers.ofString(body));
         return http.send(b.build(), HttpResponse.BodyHandlers.ofString());
     }

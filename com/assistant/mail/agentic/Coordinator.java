@@ -50,6 +50,7 @@ public final class Coordinator {
     String routed = "";
     private final ProfileContext profile; // null unless CONTEXT_DIR is set
     List<String> contextUsed = List.of(); // passages given to the specialist of the last request
+    List<String> peopleUsed = List.of(); // contact cards of the people the last request names
 
     public Coordinator(Llm llm, Router router, Opponent opponent, Memory memory, List<Specialist> specialists) {
         this.llm = llm;
@@ -77,6 +78,12 @@ public final class Coordinator {
         if (!contextUsed.isEmpty()) {
             system.append("\nRelevant documents of your profile (background, not mail):\n");
             for (String passage : contextUsed) system.append("- ").append(passage.replace('\n', ' ')).append('\n');
+        }
+        peopleUsed = profile == null ? List.of() : profile.people(request);
+        count("peopleCards", peopleUsed.size());
+        if (!peopleUsed.isEmpty()) {
+            system.append("\nWhat you know about the people named in the request (follow these notes when you write):\n");
+            for (String card : peopleUsed) system.append("- ").append(card).append('\n');
         }
         if (!lessons.isEmpty()) {
             system.append("\nLessons from your past mistakes:\n");

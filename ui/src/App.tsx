@@ -59,6 +59,7 @@ type Answer = {
   rules?: Rule[];
   agent?: string;
   context?: string[];
+  people?: string[];
   error?: string;
 };
 
@@ -76,6 +77,16 @@ function Reply({ answer }: { answer: Answer }) {
           <span>
             Routed to <strong>{answer.agent}</strong> · experimental
           </span>
+          {!!answer.people?.length && (
+            <details>
+              <summary>People known ({answer.people.length})</summary>
+              <ul>
+                {answer.people.map((card, index) => (
+                  <li key={index}>{card}</li>
+                ))}
+              </ul>
+            </details>
+          )}
           {!!answer.context?.length && (
             <details>
               <summary>Context used ({answer.context.length})</summary>
@@ -292,6 +303,17 @@ export default function App() {
     }
   };
 
+  const remember = async () => {
+    const to = draft.to.split(/[,;]/)[0].trim().replace(/^.*<|>.*$/g, "");
+    const response = await fetch("/api/people/learn", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: to, text: draft.body }),
+    }).catch(() => null);
+    const body = response ? ((await response.json().catch(() => ({}))) as { error?: string }) : { error: "Server not reachable." };
+    setNotice(response?.ok ? `Reply remembered in the card of ${to}.` : body.error || "Could not save.");
+  };
+
   const veto = async (index: number) => {
     const response = await fetch("/api/veto", {
       method: "POST",
@@ -505,6 +527,11 @@ export default function App() {
                 <Icon name="beb45.svg" size={18} />
                 {notice}
               </span>
+              {agentMode && draft.body && (
+                <button type="button" className="open-draft" onClick={() => void remember()}>
+                  Validate: remember for this person
+                </button>
+              )}
               {draft.link ? (
                 <a className="open-draft" href={draft.link} target="_blank" rel="noreferrer">
                   Open draft in mail

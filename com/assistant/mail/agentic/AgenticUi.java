@@ -24,6 +24,8 @@ import tools.jackson.databind.node.ObjectNode;
  *   <li>{@code GET /api/agents}: the specialists, their prompt, their built-in context and their context files.</li>
  *   <li>{@code POST /api/agents}: create a specialist. {@code PUT /api/agents/{name}}: change description, prompt, context.</li>
  *   <li>{@code GET|PUT|DELETE /api/agents/{name}/files/{file}}: the specialist's context documents.</li>
+ *   <li>{@code /api/people}: the owner's contact cards (list, edit, delete) and {@code /api/people/learn}: remember a
+ *       reply the owner validated in the recipient's card.</li>
  * </ul>
  * Writes stay inside the specialists folder and the context folder; names and file names are validated; an agent is
  * never deleted. Specialists and documents are re-read for every request, so an edit applies to the next turn.
@@ -50,6 +52,7 @@ public final class AgenticUi {
 
     void register(HttpServer server, boolean withTurn) {
         server.createContext("/api/agents", this::agents);
+        server.createContext("/api/people", this::people);
         if (withTurn) server.createContext("/api/agentic/turn", this::turn);
     }
 
@@ -157,6 +160,61 @@ public final class AgenticUi {
         Files.writeString(path, text, StandardCharsets.UTF_8);
     }
 
+    // ------------------------------------------------------------------ knowledge about people
+
+    /** GET: the cards. POST: create or edit a card. DELETE ?email=: remove one. POST /learn: remember a validated reply. */
+    private void people(HttpExchange ex) throws IOException {
+        try {
+            String route = ex.getRequestURI().getPath().replaceFirst("^/api/people/?", "");
+            String method = ex.getRequestMethod();
+            if (route.isEmpty() && method.equals("GET")) {
+                ObjectNode root = Llm.JSON.createObjectNode();
+                ArrayNode cards = root.putArray("people");
+                for (var entry : People.read(context).properties()) {
+                    ObjectNode card = (ObjectNode) entry.getValue().deepCopy();
+                    card.put("email", entry.getKey());
+                    cards.add(card);
+                }
+                send(ex, 200, root.toString());
+            } else if (route.isEmpty() && method.equals("POST")) {
+                JsonNode b = readJson(ex);
+                String email = address(b.path("email").asString(""));
+                People.save(context, email, text(b, "name", 100), text(b, "role", 100), text(b, "organization", 100), text(b, "notes", 2000));
+                send(ex, 200, Llm.JSON.createObjectNode().put("email", email).toString());
+            } else if (route.isEmpty() && method.equals("DELETE")) {
+                String query = String.valueOf(ex.getRequestURI().getRawQuery());
+                String email = address(java.net.URLDecoder.decode(query.replaceFirst("^email=", ""), StandardCharsets.UTF_8));
+                if (!People.delete(context, email)) throw new BadRequest(404, "No card for " + email);
+                send(ex, 200, Llm.JSON.createObjectNode().put("deleted", email).toString());
+            } else if (route.equals("learn") && method.equals("POST")) {
+                JsonNode b = readJson(ex);
+                String email = address(b.path("email").asString(""));
+                String reply = text(b, "text", MAX_BYTES);
+                if (reply.isBlank()) throw new BadRequest(400, "Nothing to remember");
+                People.learn(context, email, reply);
+                send(ex, 200, Llm.JSON.createObjectNode().put("email", email).toString());
+            } else {
+                send(ex, 405, error("GET, POST or DELETE"));
+            }
+        } catch (BadRequest e) {
+            send(ex, e.status, error(e.getMessage()));
+        } catch (RuntimeException e) {
+            send(ex, 500, error(String.valueOf(e.getMessage())));
+        }
+    }
+
+    private static String address(String raw) {
+        String email = raw.strip().toLowerCase(java.util.Locale.ROOT);
+        if (!People.EMAIL.matcher(email).matches()) throw new BadRequest(400, "Not an e-mail address");
+        return email;
+    }
+
+    private static String text(JsonNode body, String field, int max) {
+        String value = body.path(field).asString("").strip();
+        if (value.length() > max) throw new BadRequest(413, field + " is too long");
+        return value;
+    }
+
     // ------------------------------------------------------------------ one agentic turn
 
     private void turn(HttpExchange ex) throws IOException {
@@ -195,6 +253,8 @@ public final class AgenticUi {
             root.put("agent", c.routed);
             ArrayNode used = root.putArray("context");
             c.contextUsed.forEach(used::add);
+            ArrayNode people = root.putArray("people");
+            c.peopleUsed.forEach(people::add);
             ObjectNode stats = root.putObject("stats");
             c.stats.forEach(stats::put);
             Progress.note("Finished");

@@ -10,6 +10,8 @@ type Agent = {
   files: AgentFile[];
 };
 
+type Person = { email: string; name: string; role: string; organization: string; notes: string; replies?: string[] };
+
 type FileEditor = { name: string; text: string; isNew: boolean };
 
 async function api<T>(path: string, method = "GET", body?: unknown): Promise<T> {
@@ -37,6 +39,10 @@ export default function AgentsPanel({ onClose }: { onClose: () => void }) {
   const [newName, setNewName] = useState("");
   const [status, setStatus] = useState("");
   const [failed, setFailed] = useState(false);
+  const [view, setView] = useState<"agents" | "people">("agents");
+  const [people, setPeople] = useState<Person[]>([]);
+  const [card, setCard] = useState<Person | null>(null);
+  const [cardIsNew, setCardIsNew] = useState(false);
 
   const say = (text: string, bad = false) => {
     setStatus(text);
@@ -66,6 +72,40 @@ export default function AgentsPanel({ onClose }: { onClose: () => void }) {
   useEffect(() => {
     void load();
   }, [load]);
+
+  const loadPeople = useCallback(async (keep?: string) => {
+    try {
+      const body = await api<{ people: Person[] }>("/api/people");
+      setPeople(body.people);
+      const found = body.people.find((item) => item.email === keep) ?? null;
+      setCard(found);
+      setCardIsNew(false);
+    } catch (error) {
+      say((error as Error).message, true);
+    }
+  }, []);
+
+  const saveCard = async () => {
+    if (!card) return;
+    try {
+      await api("/api/people", "POST", card);
+      say("Card saved. Agents use it from the next request.");
+      await loadPeople(card.email.trim().toLowerCase());
+    } catch (error) {
+      say((error as Error).message, true);
+    }
+  };
+
+  const deleteCard = async () => {
+    if (!card || cardIsNew) return;
+    try {
+      await api(`/api/people?email=${encodeURIComponent(card.email)}`, "DELETE");
+      say("Card deleted.");
+      await loadPeople();
+    } catch (error) {
+      say((error as Error).message, true);
+    }
+  };
 
   const current = agents.find((agent) => agent.name === selected);
 
@@ -156,12 +196,24 @@ export default function AgentsPanel({ onClose }: { onClose: () => void }) {
 
         <div className="agents-body">
           <nav className="agents-list" aria-label="Agents">
+            <button
+              type="button"
+              className={view === "people" ? "is-selected" : ""}
+              onClick={() => {
+                setView("people");
+                void loadPeople();
+              }}
+            >
+              <strong>People</strong>
+              <small>contact cards</small>
+            </button>
             {agents.map((agent) => (
               <button
                 key={agent.name}
                 type="button"
-                className={agent.name === selected && !creating ? "is-selected" : ""}
+                className={view === "agents" && agent.name === selected && !creating ? "is-selected" : ""}
                 onClick={() => {
+                  setView("agents");
                   setCreating(false);
                   pick(agents, agent.name);
                 }}
@@ -174,6 +226,7 @@ export default function AgentsPanel({ onClose }: { onClose: () => void }) {
               type="button"
               className={`agents-new ${creating ? "is-selected" : ""}`}
               onClick={() => {
+                setView("agents");
                 setCreating(true);
                 setDescription("");
                 setPrompt("");
@@ -185,7 +238,103 @@ export default function AgentsPanel({ onClose }: { onClose: () => void }) {
           </nav>
 
           <div className="agents-edit">
-            {creating ? (
+            {view === "people" ? (
+              <>
+                <h3>People the agents know</h3>
+                <p className="agents-hint">
+                  A card is given to the agent when the request names the person. “Validate: remember for this person”
+                  in the draft panel adds the reply you accepted to the card (the last three are kept).
+                </p>
+                <ul className="agents-files">
+                  {people.map((item) => (
+                    <li key={item.email}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCard(item);
+                          setCardIsNew(false);
+                        }}
+                      >
+                        {item.name}
+                      </button>
+                      <small>{item.email}</small>
+                    </li>
+                  ))}
+                  {people.length === 0 && <li className="agents-hint">No card yet.</li>}
+                </ul>
+                <div className="agents-actions">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCard({ email: "", name: "", role: "", organization: "", notes: "" });
+                      setCardIsNew(true);
+                    }}
+                  >
+                    New card
+                  </button>
+                </div>
+                {card && (
+                  <div className="agents-file-editor">
+                    <label>
+                      E-mail address
+                      <input
+                        value={card.email}
+                        disabled={!cardIsNew}
+                        onChange={(event) => setCard({ ...card, email: event.target.value })}
+                      />
+                    </label>
+                    <label>
+                      Name
+                      <input value={card.name} onChange={(event) => setCard({ ...card, name: event.target.value })} />
+                    </label>
+                    <label>
+                      Role
+                      <input value={card.role} onChange={(event) => setCard({ ...card, role: event.target.value })} />
+                    </label>
+                    <label>
+                      Organization
+                      <input
+                        value={card.organization}
+                        onChange={(event) => setCard({ ...card, organization: event.target.value })}
+                      />
+                    </label>
+                    <label>
+                      Notes (tone, habits, what to include)
+                      <textarea
+                        rows={4}
+                        value={card.notes}
+                        onChange={(event) => setCard({ ...card, notes: event.target.value })}
+                      />
+                    </label>
+                    {!!card.replies?.length && (
+                      <>
+                        <p className="agents-hint">Replies you validated for this person:</p>
+                        <ul className="agents-files">
+                          {card.replies.map((reply, index) => (
+                            <li key={index}>
+                              <small>{reply}</small>
+                            </li>
+                          ))}
+                        </ul>
+                      </>
+                    )}
+                    <div className="agents-actions">
+                      <button type="button" onClick={() => void saveCard()} disabled={!card.email.trim()}>
+                        Save card
+                      </button>
+                      {!cardIsNew && (
+                        <button type="button" onClick={() => void deleteCard()}>
+                          Delete card
+                        </button>
+                      )}
+                      <button type="button" onClick={() => setCard(null)}>
+                        Close
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : creating ? (
               <>
                 <label>
                   Name

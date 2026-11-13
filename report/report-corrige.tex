@@ -8,31 +8,22 @@
 \usepackage{graphicx}
 \usepackage{xcolor}
 \usepackage{amsmath}
-\newif\ifhaspgf
-\IfFileExists{pgfplots.sty}{\haspgftrue}{\haspgffalse}
-\ifhaspgf
 \usepackage{pgfplots}
 \usepackage{pgfplotstable}
-\fi
 \usepackage{tikz}
 \usepackage{longtable}
 \usetikzlibrary{arrows.meta,positioning,shapes.geometric,fit,calc}
-\ifhaspgf
 \pgfplotsset{compat=1.18}
 \pgfplotsset{discard if not/.style 2 args={unbounded coords=discard, x filter/.append code={%
   \edef\tempa{\thisrow{#1}}\edef\tempb{#2}\ifx\tempa\tempb\else\def\pgfmathresult{inf}\fi}}}
-\fi
 \usepackage[hidelinks]{hyperref}
 
 \newcommand{\code}[1]{\texttt{#1}}
 % one colour per configuration, used by every figure
 \definecolor{wfN}{HTML}{9E9E9E}\definecolor{wfM}{HTML}{424242}
 \definecolor{agN}{HTML}{64B5F6}\definecolor{agM}{HTML}{0D47A1}\definecolor{agO}{HTML}{E69F00}
-\ifhaspgf
 \pgfplotsset{every axis/.append style={grid=major, grid style={gray!20}, tick label style={font=\small}, label style={font=\small}, legend style={font=\small}}}
-\fi
 \newcommand{\todo}[1]{{\color{red}[#1]}}
-\newcommand{\missingplot}{\fbox{\parbox{0.9\linewidth}{\centering\small This plot needs the \texttt{pgfplots} package, which was not installed when this PDF was built. See the original \texttt{report.pdf}.}}}
 
 \title{Friction as a Design Principle:\\
 An Argumentative Multi-Agent Organization for Local-LLM Email Assistance,\\
@@ -68,13 +59,23 @@ completed at submission time.
 \paragraph{What is a multi-agent system?}
 A multi-agent system (MAS) is a set of \emph{agents} that act in a shared environment to solve a problem that none of
 them handles well alone. An agent is an autonomous entity with its own goal, its own knowledge and its own actions:
-it perceives its environment, decides and acts. What turns a set of agents into a system is its \emph{organization}:
-the roles they play, the messages they exchange (an interaction protocol), the rules they must respect (norms) and the
-way conflicts are settled (negotiation, argumentation, voting). A MAS is therefore different from a program that calls
-a language model once: the intelligence is spread over specialized agents whose cooperation, or confrontation, is
-designed, observable and measurable. Here the agents are language-model agents and the environment is a mailbox.
-This report answers the course assignment, called \emph{the project statement} below: design a framework in which
-such an organization drafts replies to e-mails with local language models.
+it perceives its environment, decides and acts. What turns a set of agents into a system is its
+\emph{organization}. We use the definition of the course module ``Organizations in Multi-Agent Systems''
+\cite{cm1}: ``an \emph{organization} defines how autonomous agents relate to each other'', through \emph{roles},
+\emph{authority}, \emph{communication}, \emph{coordination} and \emph{norms}. The same module states what is at stake:
+``the organizational form determines who can decide, who can request help, who can veto, and how the system responds
+to change''. It lists six forms (centralized, hierarchical, peer-to-peer, market-based, coalition or federation,
+holonic) and four design questions: where is knowledge, who can decide, what can fail, how does the system adapt.
+
+Our system answers these questions as follows. It is \emph{centralized} for decisions: one coordinator has the global
+view, enforces the norms and settles every conflict (single point of failure, accepted for a mailbox assistant). It is
+\emph{hierarchical} for delegation: the owner's request goes down to a router, then to one specialist, and the result
+goes back up. Knowledge is \emph{distributed}: each specialist has its own prompt and its own documents. Adaptation
+happens by negotiation with the opponent and by the lessons kept in memory. A MAS is therefore different from a program
+that calls a language model once: the intelligence is spread over specialized agents whose cooperation, or
+confrontation, is designed, observable and measurable. Here the agents are language-model agents and the environment
+is a mailbox. This report answers the course assignment, called \emph{the project statement} below: design a framework
+in which such an organization drafts replies to e-mails with local language models.
 
 \paragraph{The problem.}
 University staff receive many kinds of mail (students, colleagues, administration, research partners), and a good
@@ -83,11 +84,11 @@ should not leave the owner's machine, so we use only local models, which are muc
 The project hypothesis is that \emph{an organization of specialized agents can compensate for the weakness of a
 single small model}.
 
-We add one question taken from the MAS course: \emph{does friction between agents help?} Two agents with
+We add one research question: \emph{does friction between agents help?} Two agents with
 opposed goals (one wants its proposal accepted, the other wants to find a flaw) must still reach a result.
 This is a minimal argumentation-based negotiation. It is also a defence against manipulation: an email containing
 instructions for ``the assistant'' (prompt injection) is a strategic testimony that tries to shift the outcome by
-corrupting the information environment, exactly the attack pattern studied in the course on reputation systems.
+corrupting the information environment.
 
 \paragraph{Research questions.}
 \begin{description}
@@ -236,13 +237,23 @@ index for every request, so an edited file applies at once.}
 \end{figure}
 
 \paragraph{Knowledge about people.}
-Specialists also know the people they write to. A contact card (\code{context/recipients.json}) holds a person's name,
-role, organization and free notes, for instance ``prefers formal French''. When a specialist calls
-\code{lookup\_contact} for a name, it receives the address and the card, and writes accordingly; the benchmark's
-directory is consulted first, the cards when it knows nobody of that name. The cards are read-only for the agents: the
-owner writes them, nothing is learned from the replies the owner validates. The earlier module \code{email-multiagent}
-goes further (its \code{RecipientKnowledgeBase} injects the card into every prompt and records each validated reply
-into it); the agentic system does not do either yet (see the limits).
+Specialists also know the people they write to. A \emph{contact card} (\code{context/recipients.json}) holds a person's
+name, role, organization and free notes, for instance ``prefers formal French'', and the last three replies the owner
+validated for that person. Three mechanisms use it:
+\begin{enumerate}
+  \item \emph{Automatic injection.} When a request names a person (address, full name or a distinctive part of the
+        name), the card is added to the prompt of the chosen specialist under ``what you know about the people named in
+        the request''. The chat page lists the cards used for each answer.
+  \item \emph{Lookup.} \code{lookup\_contact} returns the address and the card; the benchmark's directory is consulted
+        first, the cards when it knows nobody of that name.
+  \item \emph{Learning from validation.} In Agents mode, the button ``Validate: remember for this person'' stores the
+        accepted reply in the recipient's card (created if unknown); the last three are kept, and they are given to the
+        agent the next time that person is concerned.
+\end{enumerate}
+The owner edits the cards in the ``People'' tab of the agents panel. Nothing is written by an agent on its own: a card
+changes only when the owner edits it or validates a reply, so an error or an injected e-mail cannot rewrite what the
+system believes about someone. The earlier module \code{email-multiagent} follows the same idea
+(\code{RecipientKnowledgeBase}).
 
 \paragraph{Related module: category router and mail integration.}
 The repository also contains \code{email-multiagent}, an earlier and separate implementation of the minimal scenario of
@@ -658,7 +669,6 @@ p95 latency (s) & 17.1 & 17.1 & n/c & 26.9 & 224.4 \\
 
 \begin{figure}[ht]
 \centering
-\ifhaspgf
 \begin{tikzpicture}
 \begin{axis}[width=0.62\linewidth, height=6cm, xlabel={trial}, ylabel={mean execution score}, xtick={1,2,3},
   ymin=0.3, ymax=1.01, legend style={at={(0.5,1.03)}, anchor=south}, legend columns=4]
@@ -668,14 +678,12 @@ p95 latency (s) & 17.1 & 17.1 & n/c & 26.9 & 224.4 \\
 \addplot[agM, mark=square*, thick] table[x=trial, y=agMem] {data/curves.csv}; \addlegendentry{AG+M}
 \end{axis}
 \end{tikzpicture}
-\else\missingplot\fi
 \caption{Learning curves: mean score per trial (RQ3). Memory configurations are dark, their no-memory twins light. The run without the opponent (AG$-$O) was not completed and is not plotted.}
 \label{fig:curves}
 \end{figure}
 
 \begin{figure}[ht]
 \centering
-\ifhaspgf
 \begin{tikzpicture}
 \begin{axis}[width=\linewidth, height=6cm, ybar=0.6pt, bar width=5pt, ymin=0, ymax=1.05, ylabel={pass rate},
   xtick=data, xticklabels from table={data/dims.csv}{dim}, legend style={at={(0.5,1.03)}, anchor=south, legend columns=4}]
@@ -685,14 +693,12 @@ p95 latency (s) & 17.1 & 17.1 & n/c & 26.9 & 224.4 \\
 \addplot[fill=agM, draw=none] table[x=x, y=agMem] {data/dims.csv}; \addlegendentry{AG+M}
 \end{axis}
 \end{tikzpicture}
-\else\missingplot\fi
 \caption{Pass rate per scorecard dimension, all trials (RQ1, RQ2). AG$-$O was not completed and is not plotted.}
 \label{fig:dims}
 \end{figure}
 
 \begin{figure}[ht]
 \centering
-\ifhaspgf
 \begin{tikzpicture}
 \begin{axis}[width=\linewidth, height=5.5cm, ybar=0.6pt, bar width=6pt, ymin=0, ymax=1.05, ylabel={mean score},
   xtick=data, xticklabels from table={data/kinds.csv}{kind}, legend style={at={(0.5,1.03)}, anchor=south, legend columns=4}]
@@ -702,14 +708,12 @@ p95 latency (s) & 17.1 & 17.1 & n/c & 26.9 & 224.4 \\
 \addplot[fill=agM, draw=none] table[x=x, y=agMem] {data/kinds.csv}; \addlegendentry{AG+M}
 \end{axis}
 \end{tikzpicture}
-\else\missingplot\fi
 \caption{Mean score per scenario kind. AG$-$O was not completed and is not plotted.}
 \label{fig:kinds}
 \end{figure}
 
 \begin{figure}[ht]
 \centering
-\ifhaspgf
 \begin{tikzpicture}
 \begin{axis}[width=0.48\linewidth, height=5.5cm, xlabel={trial}, ylabel={per execution}, xtick={1,2,3},
   ymin=0, legend style={at={(0.5,-0.32)}, anchor=north}, legend columns=2, title={\small negotiation (AG+M)}]
@@ -728,7 +732,6 @@ p95 latency (s) & 17.1 & 17.1 & n/c & 26.9 & 224.4 \\
 \addplot[agM, mark=square*, thick] table[x=trial, y=agMem] {data/latency.csv}; \addlegendentry{AG+M}
 \end{axis}
 \end{tikzpicture}
-\else\missingplot\fi
 \caption{Left: negotiation statistics per execution across trials with memory (do lessons reduce attacks?).
 Right: cost of friction and memory.}
 \label{fig:debate}
@@ -856,8 +859,9 @@ a logged message, so the organization is auditable and its mechanisms can be mea
         Transfer to unseen scenarios (the hard and held-out sets) is not yet measured.
   \item \textbf{Lessons are not validated.} A lesson is kept whenever the specialist concedes, whether or not the
         attack was right.
-  \item \textbf{Knowledge about people} is read-only: contact cards are written by the owner and returned by
-        \code{lookup\_contact}; they are not injected automatically into the prompt and not updated from the owner's decisions.
+  \item \textbf{Knowledge about people} is simple: cards are found by name or address in the request, not by the
+        sender of a mail the agent reads, and a validated reply is stored as text, not summarised into a profile.
+        This feature is tested (self-checks and manual test of the chat page) but not part of the benchmark scores.
   \item \textbf{Interface.} The chat page edits agents, prompts and documents, but it does not show the inbox and does
         not accept, edit or reject a draft (Table~\ref{tab:ui}).
   \item \textbf{Per-agent documents} are verified to reach the chosen agent, but their effect on quality is not measured.
@@ -870,17 +874,16 @@ a logged message, so the organization is auditable and its mechanisms can be mea
 
 \section{Possible improvements}
 \begin{enumerate}
-  \item \textbf{Reputation for the opponent} (course: reputation systems): weight its attacks, and the lessons they
+  \item \textbf{Reputation for the opponent:} weight its attacks, and the lessons they
         produce, by how often its past attacks led to better outcomes; a bad opponent loses influence.
   \item \textbf{Validated memory:} keep a lesson only if the next use of it passes, with helpful/harmful counters,
         deduplication and a fixed budget; allow the owner's veto.
   \item \textbf{Different models} for opponent and specialist, and a judge from another model family.
-  \item \textbf{Voting router} (course: voting systems): several routers vote; ties go to \code{generic} or to a
+  \item \textbf{Voting router:} several routers vote; ties go to \code{generic} or to a
         question to the owner.
   \item Run the hard and held-out sets with frozen memory to test transfer.
-  \item \textbf{Knowledge about people:} inject the card of the person concerned into the prompt automatically, let the owner
-        edit the cards in the chat page, and update a card from the replies the owner validates (as \code{RecipientKnowledgeBase}
-        does in \code{email-multiagent}).
+  \item \textbf{Knowledge about people:} summarise validated replies into a profile (tone, habits) instead of
+        keeping raw text, find the card of the sender of a mail that is read, and measure the effect on the benchmark.
 \end{enumerate}
 
 \section{Conclusion}
@@ -936,4 +939,9 @@ java -cp <cp> com.assistant.mail.agentic.RouterEval \
 ./ui/agent
 cd ui && npm install && npm run dev
 \end{verbatim}
+\begin{thebibliography}{9}
+\bibitem{cm1} Course module \emph{Multi-Agent Systems: Organizational Forms} (``Organizations in Multi-Agent Systems'',
+  CM1), course slides, Master 2 Multi-Agent Systems.
+\end{thebibliography}
+
 \end{document}
