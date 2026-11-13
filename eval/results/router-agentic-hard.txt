@@ -1,0 +1,19 @@
+=== Agentic Router.ByLlm | model huihui_ai/qwen3-abliterated:4b | emails-hard.jsonl (12 mails) ===
+  Absence lundi                      expected=STUDENT        predicted=STUDENT        OK
+  Tuteur de stage                    expected=STUDENT        predicted=STUDENT        OK
+  Sujet de TP                        expected=TEACHER        predicted=STUDENT        MISS
+  Remboursement de mission           expected=ADMINISTRATION predicted=ADMINISTRATION OK
+  Contrat du doctorant               expected=ADMINISTRATION predicted=ADMINISTRATION OK
+  Résultats prêts                    expected=RESEARCH       predicted=RESEARCH       OK
+  Consortium                         expected=RESEARCH       predicted=RESEARCH       OK
+  Bonne année                        expected=GENERIC        predicted=STUDENT        MISS
+  Note du projet                     expected=STUDENT        predicted=STUDENT        OK
+  Cours de mardi                     expected=ADMINISTRATION predicted=ADMINISTRATION OK
+  Point sur SuperMASProject et la sc expected=RESEARCH       predicted=ADMINISTRATION MISS
+  Demande                            expected=GENERIC        predicted=GENERIC        OK
+Accuracy: 9/12 (75.0%)
+    STUDENT          3/3
+    TEACHER          0/1
+    ADMINISTRATION   3/3
+    RESEARCH         2/3
+    GENERIC          1/2

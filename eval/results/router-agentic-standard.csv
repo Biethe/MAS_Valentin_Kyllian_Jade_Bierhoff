@@ -1,0 +1,16 @@
+subject,expected,predicted,ok,seconds
+"Question about the course",STUDENT,STUDENT,true,11.9
+"Exam grade",STUDENT,STUDENT,true,0.6
+"Course schedule",STUDENT,STUDENT,true,0.4
+"Meeting with colleagues",TEACHER,TEACHER,true,0.5
+"Reunion",TEACHER,TEACHER,true,0.4
+"Teaching coordination",TEACHER,TEACHER,true,0.4
+"Invoice",ADMINISTRATION,ADMINISTRATION,true,0.5
+"Form",ADMINISTRATION,ADMINISTRATION,true,0.4
+"Room booking",ADMINISTRATION,ADMINISTRATION,true,0.4
+"SuperMASProject",RESEARCH,RESEARCH,true,0.5
+"Research paper",RESEARCH,RESEARCH,true,0.4
+"Project milestone",RESEARCH,RESEARCH,true,0.4
+"Hello",GENERIC,GENERIC,true,0.4
+"Follow-up",GENERIC,GENERIC,true,0.4
+"Information",GENERIC,GENERIC,true,0.5

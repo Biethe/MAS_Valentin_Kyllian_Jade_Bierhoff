@@ -1,0 +1,81 @@
+
+=== Keyword router ===
+Accuracy: 15/15 (100.0%)
+  Question about the course expected=STUDENT        predicted=STUDENT        OK
+  Exam grade       expected=STUDENT        predicted=STUDENT        OK
+  Course schedule  expected=STUDENT        predicted=STUDENT        OK
+  Meeting with colleagues expected=TEACHER        predicted=TEACHER        OK
+  Reunion          expected=TEACHER        predicted=TEACHER        OK
+  Teaching coordination expected=TEACHER        predicted=TEACHER        OK
+  Invoice          expected=ADMINISTRATION predicted=ADMINISTRATION OK
+  Form             expected=ADMINISTRATION predicted=ADMINISTRATION OK
+  Room booking     expected=ADMINISTRATION predicted=ADMINISTRATION OK
+  SuperMASProject  expected=RESEARCH       predicted=RESEARCH       OK
+  Research paper   expected=RESEARCH       predicted=RESEARCH       OK
+  Project milestone expected=RESEARCH       predicted=RESEARCH       OK
+  Hello            expected=GENERIC        predicted=GENERIC        OK
+  Follow-up        expected=GENERIC        predicted=GENERIC        OK
+  Information      expected=GENERIC        predicted=GENERIC        OK
+  Per category:
+    STUDENT          3/3 (100.0%)
+    TEACHER          3/3 (100.0%)
+    ADMINISTRATION   3/3 (100.0%)
+    RESEARCH         3/3 (100.0%)
+    GENERIC          3/3 (100.0%)
+
+=== LLM router ===
+Accuracy: 13/15 (86.7%)
+  Question about the course expected=STUDENT        predicted=STUDENT        OK
+  Exam grade       expected=STUDENT        predicted=STUDENT        OK
+  Course schedule  expected=STUDENT        predicted=STUDENT        OK
+  Meeting with colleagues expected=TEACHER        predicted=TEACHER        OK
+  Reunion          expected=TEACHER        predicted=GENERIC        MISS
+  Teaching coordination expected=TEACHER        predicted=TEACHER        OK
+  Invoice          expected=ADMINISTRATION predicted=ADMINISTRATION OK
+  Form             expected=ADMINISTRATION predicted=ADMINISTRATION OK
+  Room booking     expected=ADMINISTRATION predicted=TEACHER        MISS
+  SuperMASProject  expected=RESEARCH       predicted=RESEARCH       OK
+  Research paper   expected=RESEARCH       predicted=RESEARCH       OK
+  Project milestone expected=RESEARCH       predicted=RESEARCH       OK
+  Hello            expected=GENERIC        predicted=GENERIC        OK
+  Follow-up        expected=GENERIC        predicted=GENERIC        OK
+  Information      expected=GENERIC        predicted=GENERIC        OK
+  Per category:
+    STUDENT          3/3 (100.0%)
+    TEACHER          2/3 (66.7%)
+    ADMINISTRATION   2/3 (66.7%)
+    RESEARCH         3/3 (100.0%)
+    GENERIC          3/3 (100.0%)
+
+=== Hybrid router ===
+Accuracy: 15/15 (100.0%)
+  Question about the course expected=STUDENT        predicted=STUDENT        OK
+  Exam grade       expected=STUDENT        predicted=STUDENT        OK
+  Course schedule  expected=STUDENT        predicted=STUDENT        OK
+  Meeting with colleagues expected=TEACHER        predicted=TEACHER        OK
+  Reunion          expected=TEACHER        predicted=TEACHER        OK
+  Teaching coordination expected=TEACHER        predicted=TEACHER        OK
+  Invoice          expected=ADMINISTRATION predicted=ADMINISTRATION OK
+  Form             expected=ADMINISTRATION predicted=ADMINISTRATION OK
+  Room booking     expected=ADMINISTRATION predicted=ADMINISTRATION OK
+  SuperMASProject  expected=RESEARCH       predicted=RESEARCH       OK
+  Research paper   expected=RESEARCH       predicted=RESEARCH       OK
+  Project milestone expected=RESEARCH       predicted=RESEARCH       OK
+  Hello            expected=GENERIC        predicted=GENERIC        OK
+  Follow-up        expected=GENERIC        predicted=GENERIC        OK
+  Information      expected=GENERIC        predicted=GENERIC        OK
+  Per category:
+    STUDENT          3/3 (100.0%)
+    TEACHER          3/3 (100.0%)
+    ADMINISTRATION   3/3 (100.0%)
+    RESEARCH         3/3 (100.0%)
+    GENERIC          3/3 (100.0%)
+
+=== Comparison ===
+Keyword: 15/15 (100.0%)
+LLM:     13/15 (86.7%)
+Hybrid:  15/15 (100.0%)
+
+Disagreements:
+  Reunion                                  expected=TEACHER        keyword=TEACHER        llm=GENERIC        hybrid=TEACHER       
+  Room booking                             expected=ADMINISTRATION keyword=ADMINISTRATION llm=TEACHER        hybrid=ADMINISTRATION

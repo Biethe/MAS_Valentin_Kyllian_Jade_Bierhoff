@@ -1,0 +1,78 @@
+
+=== Keyword router ===
+Accuracy: 3/12 (25.0%)
+  Absence lundi    expected=STUDENT        predicted=GENERIC        MISS
+  Tuteur de stage  expected=STUDENT        predicted=TEACHER        MISS
+  Sujet de TP      expected=TEACHER        predicted=GENERIC        MISS
+  Remboursement de mission expected=ADMINISTRATION predicted=GENERIC        MISS
+  Contrat du doctorant expected=ADMINISTRATION predicted=GENERIC        MISS
+  Résultats prêts  expected=RESEARCH       predicted=GENERIC        MISS
+  Consortium       expected=RESEARCH       predicted=TEACHER        MISS
+  Bonne année      expected=GENERIC        predicted=GENERIC        OK
+  Note du projet   expected=STUDENT        predicted=RESEARCH       MISS
+  Cours de mardi   expected=ADMINISTRATION predicted=STUDENT        MISS
+  Point sur SuperMASProject et la scolarité expected=RESEARCH       predicted=RESEARCH       OK
+  Demande          expected=GENERIC        predicted=GENERIC        OK
+  Per category:
+    STUDENT          0/3 (0.0%)
+    TEACHER          0/1 (0.0%)
+    ADMINISTRATION   0/3 (0.0%)
+    RESEARCH         1/3 (33.3%)
+    GENERIC          2/2 (100.0%)
+
+=== LLM router ===
+Accuracy: 8/12 (66.7%)
+  Absence lundi    expected=STUDENT        predicted=STUDENT        OK
+  Tuteur de stage  expected=STUDENT        predicted=TEACHER        MISS
+  Sujet de TP      expected=TEACHER        predicted=STUDENT        MISS
+  Remboursement de mission expected=ADMINISTRATION predicted=ADMINISTRATION OK
+  Contrat du doctorant expected=ADMINISTRATION predicted=ADMINISTRATION OK
+  Résultats prêts  expected=RESEARCH       predicted=RESEARCH       OK
+  Consortium       expected=RESEARCH       predicted=RESEARCH       OK
+  Bonne année      expected=GENERIC        predicted=GENERIC        OK
+  Note du projet   expected=STUDENT        predicted=STUDENT        OK
+  Cours de mardi   expected=ADMINISTRATION predicted=STUDENT        MISS
+  Point sur SuperMASProject et la scolarité expected=RESEARCH       predicted=RESEARCH       OK
+  Demande          expected=GENERIC        predicted=TEACHER        MISS
+  Per category:
+    STUDENT          2/3 (66.7%)
+    TEACHER          0/1 (0.0%)
+    ADMINISTRATION   2/3 (66.7%)
+    RESEARCH         3/3 (100.0%)
+    GENERIC          1/2 (50.0%)
+
+=== Hybrid router ===
+Accuracy: 7/12 (58.3%)
+  Absence lundi    expected=STUDENT        predicted=STUDENT        OK
+  Tuteur de stage  expected=STUDENT        predicted=TEACHER        MISS
+  Sujet de TP      expected=TEACHER        predicted=STUDENT        MISS
+  Remboursement de mission expected=ADMINISTRATION predicted=ADMINISTRATION OK
+  Contrat du doctorant expected=ADMINISTRATION predicted=ADMINISTRATION OK
+  Résultats prêts  expected=RESEARCH       predicted=RESEARCH       OK
+  Consortium       expected=RESEARCH       predicted=TEACHER        MISS
+  Bonne année      expected=GENERIC        predicted=GENERIC        OK
+  Note du projet   expected=STUDENT        predicted=RESEARCH       MISS
+  Cours de mardi   expected=ADMINISTRATION predicted=STUDENT        MISS
+  Point sur SuperMASProject et la scolarité expected=RESEARCH       predicted=RESEARCH       OK
+  Demande          expected=GENERIC        predicted=GENERIC        OK
+  Per category:
+    STUDENT          1/3 (33.3%)
+    TEACHER          0/1 (0.0%)
+    ADMINISTRATION   2/3 (66.7%)
+    RESEARCH         2/3 (66.7%)
+    GENERIC          2/2 (100.0%)
+
+=== Comparison ===
+Keyword: 3/12 (25.0%)
+LLM:     8/12 (66.7%)
+Hybrid:  7/12 (58.3%)
+
+Disagreements:
+  Absence lundi                            expected=STUDENT        keyword=GENERIC        llm=STUDENT        hybrid=STUDENT       
+  Sujet de TP                              expected=TEACHER        keyword=GENERIC        llm=STUDENT        hybrid=STUDENT       
+  Remboursement de mission                 expected=ADMINISTRATION keyword=GENERIC        llm=ADMINISTRATION hybrid=ADMINISTRATION
+  Contrat du doctorant                     expected=ADMINISTRATION keyword=GENERIC        llm=ADMINISTRATION hybrid=ADMINISTRATION
+  Résultats prêts                          expected=RESEARCH       keyword=GENERIC        llm=RESEARCH       hybrid=RESEARCH      
+  Consortium                               expected=RESEARCH       keyword=TEACHER        llm=RESEARCH       hybrid=TEACHER       
+  Note du projet                           expected=STUDENT        keyword=RESEARCH       llm=STUDENT        hybrid=RESEARCH      
+  Demande                                  expected=GENERIC        keyword=GENERIC        llm=TEACHER        hybrid=GENERIC       

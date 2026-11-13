@@ -1,0 +1,13 @@
+subject,expected,predicted,ok,seconds
+"Absence lundi",STUDENT,STUDENT,true,1.1
+"Tuteur de stage",STUDENT,STUDENT,true,0.8
+"Sujet de TP",TEACHER,STUDENT,false,0.7
+"Remboursement de mission",ADMINISTRATION,ADMINISTRATION,true,0.5
+"Contrat du doctorant",ADMINISTRATION,ADMINISTRATION,true,0.5
+"Résultats prêts",RESEARCH,RESEARCH,true,0.5
+"Consortium",RESEARCH,RESEARCH,true,0.5
+"Bonne année",GENERIC,STUDENT,false,0.5
+"Note du projet",STUDENT,STUDENT,true,0.5
+"Cours de mardi",ADMINISTRATION,ADMINISTRATION,true,0.5
+"Point sur SuperMASProject et la scolarité",RESEARCH,ADMINISTRATION,false,0.6
+"Demande",GENERIC,GENERIC,true,0.5

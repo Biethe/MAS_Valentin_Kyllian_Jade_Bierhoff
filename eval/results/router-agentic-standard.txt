@@ -1,0 +1,22 @@
+=== Agentic Router.ByLlm | model huihui_ai/qwen3-abliterated:4b | emails.jsonl (15 mails) ===
+  Question about the course          expected=STUDENT        predicted=STUDENT        OK
+  Exam grade                         expected=STUDENT        predicted=STUDENT        OK
+  Course schedule                    expected=STUDENT        predicted=STUDENT        OK
+  Meeting with colleagues            expected=TEACHER        predicted=TEACHER        OK
+  Reunion                            expected=TEACHER        predicted=TEACHER        OK
+  Teaching coordination              expected=TEACHER        predicted=TEACHER        OK
+  Invoice                            expected=ADMINISTRATION predicted=ADMINISTRATION OK
+  Form                               expected=ADMINISTRATION predicted=ADMINISTRATION OK
+  Room booking                       expected=ADMINISTRATION predicted=ADMINISTRATION OK
+  SuperMASProject                    expected=RESEARCH       predicted=RESEARCH       OK
+  Research paper                     expected=RESEARCH       predicted=RESEARCH       OK
+  Project milestone                  expected=RESEARCH       predicted=RESEARCH       OK
+  Hello                              expected=GENERIC        predicted=GENERIC        OK
+  Follow-up                          expected=GENERIC        predicted=GENERIC        OK
+  Information                        expected=GENERIC        predicted=GENERIC        OK
+Accuracy: 15/15 (100.0%)
+    STUDENT          3/3
+    TEACHER          3/3
+    ADMINISTRATION   3/3
+    RESEARCH         3/3
+    GENERIC          3/3
