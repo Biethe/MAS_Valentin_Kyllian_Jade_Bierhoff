@@ -593,16 +593,15 @@ p95 latency (s) & 17.1 & 17.1 & n/c & 26.9 & 224.4 \\
 \ifhaspgf
 \begin{tikzpicture}
 \begin{axis}[width=0.62\linewidth, height=6cm, xlabel={trial}, ylabel={mean execution score}, xtick={1,2,3},
-  ymin=0.3, ymax=1.01, legend pos=south east, legend columns=2]
+  ymin=0.3, ymax=1.01, legend style={at={(0.5,1.03)}, anchor=south}, legend columns=4]
 \addplot[wfN, mark=o, thick] table[x=trial, y=wfNomem] {data/curves.csv}; \addlegendentry{WF}
 \addplot[wfM, mark=*, thick] table[x=trial, y=wfMem] {data/curves.csv}; \addlegendentry{WF+M}
-\addplot[agO, mark=triangle, thick] table[x=trial, y=agNoopp] {data/curves.csv}; \addlegendentry{AG$-$O}
 \addplot[agN, mark=square, thick] table[x=trial, y=agNomem] {data/curves.csv}; \addlegendentry{AG}
 \addplot[agM, mark=square*, thick] table[x=trial, y=agMem] {data/curves.csv}; \addlegendentry{AG+M}
 \end{axis}
 \end{tikzpicture}
 \else\missingplot\fi
-\caption{Learning curves: mean score per trial (RQ3). Memory configurations are dark, their no-memory twins light.}
+\caption{Learning curves: mean score per trial (RQ3). Memory configurations are dark, their no-memory twins light. The run without the opponent (AG$-$O) was not completed and is not plotted.}
 \label{fig:curves}
 \end{figure}
 
@@ -611,16 +610,15 @@ p95 latency (s) & 17.1 & 17.1 & n/c & 26.9 & 224.4 \\
 \ifhaspgf
 \begin{tikzpicture}
 \begin{axis}[width=\linewidth, height=6cm, ybar=0.6pt, bar width=5pt, ymin=0, ymax=1.05, ylabel={pass rate},
-  xtick=data, xticklabels from table={data/dims.csv}{dim}, legend style={at={(0.5,1.03)}, anchor=south, legend columns=5}]
+  xtick=data, xticklabels from table={data/dims.csv}{dim}, legend style={at={(0.5,1.03)}, anchor=south, legend columns=4}]
 \addplot[fill=wfN, draw=none] table[x=x, y=wfNomem] {data/dims.csv}; \addlegendentry{WF}
 \addplot[fill=wfM, draw=none] table[x=x, y=wfMem] {data/dims.csv}; \addlegendentry{WF+M}
-\addplot[fill=agO, draw=none] table[x=x, y=agNoopp] {data/dims.csv}; \addlegendentry{AG$-$O}
 \addplot[fill=agN, draw=none] table[x=x, y=agNomem] {data/dims.csv}; \addlegendentry{AG}
 \addplot[fill=agM, draw=none] table[x=x, y=agMem] {data/dims.csv}; \addlegendentry{AG+M}
 \end{axis}
 \end{tikzpicture}
 \else\missingplot\fi
-\caption{Pass rate per scorecard dimension, all trials (RQ1, RQ2).}
+\caption{Pass rate per scorecard dimension, all trials (RQ1, RQ2). AG$-$O was not completed and is not plotted.}
 \label{fig:dims}
 \end{figure}
 
@@ -629,16 +627,15 @@ p95 latency (s) & 17.1 & 17.1 & n/c & 26.9 & 224.4 \\
 \ifhaspgf
 \begin{tikzpicture}
 \begin{axis}[width=\linewidth, height=5.5cm, ybar=0.6pt, bar width=6pt, ymin=0, ymax=1.05, ylabel={mean score},
-  xtick=data, xticklabels from table={data/kinds.csv}{kind}, legend style={at={(0.5,1.03)}, anchor=south, legend columns=5}]
+  xtick=data, xticklabels from table={data/kinds.csv}{kind}, legend style={at={(0.5,1.03)}, anchor=south, legend columns=4}]
 \addplot[fill=wfN, draw=none] table[x=x, y=wfNomem] {data/kinds.csv}; \addlegendentry{WF}
 \addplot[fill=wfM, draw=none] table[x=x, y=wfMem] {data/kinds.csv}; \addlegendentry{WF+M}
-\addplot[fill=agO, draw=none] table[x=x, y=agNoopp] {data/kinds.csv}; \addlegendentry{AG$-$O}
 \addplot[fill=agN, draw=none] table[x=x, y=agNomem] {data/kinds.csv}; \addlegendentry{AG}
 \addplot[fill=agM, draw=none] table[x=x, y=agMem] {data/kinds.csv}; \addlegendentry{AG+M}
 \end{axis}
 \end{tikzpicture}
 \else\missingplot\fi
-\caption{Mean score per scenario kind.}
+\caption{Mean score per scenario kind. AG$-$O was not completed and is not plotted.}
 \label{fig:kinds}
 \end{figure}
 
@@ -647,7 +644,7 @@ p95 latency (s) & 17.1 & 17.1 & n/c & 26.9 & 224.4 \\
 \ifhaspgf
 \begin{tikzpicture}
 \begin{axis}[width=0.48\linewidth, height=5.5cm, xlabel={trial}, ylabel={per execution}, xtick={1,2,3},
-  ymin=0, legend pos=north east, title={\small negotiation (AG+M)}]
+  ymin=0, legend style={at={(0.5,-0.32)}, anchor=north}, legend columns=2, title={\small negotiation (AG+M)}]
 \addplot[agM, mark=*, thick] table[x=trial, y=attacks, discard if not={label}{agMem}] {data/debate.csv}; \addlegendentry{attacks}
 \addplot[agO, mark=triangle*, thick] table[x=trial, y=concessions, discard if not={label}{agMem}] {data/debate.csv}; \addlegendentry{concessions}
 \addplot[red!70, mark=x, thick] table[x=trial, y=normViolations, discard if not={label}{agMem}] {data/debate.csv}; \addlegendentry{norm violations}
@@ -656,10 +653,9 @@ p95 latency (s) & 17.1 & 17.1 & n/c & 26.9 & 224.4 \\
 \end{tikzpicture}\hfill
 \begin{tikzpicture}
 \begin{axis}[width=0.48\linewidth, height=5.5cm, xlabel={trial}, ylabel={seconds}, xtick={1,2,3}, ymin=0,
-  legend pos=south east, title={\small mean time per execution}]
+  legend style={at={(0.5,-0.32)}, anchor=north}, legend columns=2, title={\small mean time per execution}]
 \addplot[wfN, mark=o, thick] table[x=trial, y=wfNomem] {data/latency.csv}; \addlegendentry{WF}
 \addplot[wfM, mark=*, thick] table[x=trial, y=wfMem] {data/latency.csv}; \addlegendentry{WF+M}
-\addplot[agO, mark=triangle, thick] table[x=trial, y=agNoopp] {data/latency.csv}; \addlegendentry{AG$-$O}
 \addplot[agN, mark=square, thick] table[x=trial, y=agNomem] {data/latency.csv}; \addlegendentry{AG}
 \addplot[agM, mark=square*, thick] table[x=trial, y=agMem] {data/latency.csv}; \addlegendentry{AG+M}
 \end{axis}
