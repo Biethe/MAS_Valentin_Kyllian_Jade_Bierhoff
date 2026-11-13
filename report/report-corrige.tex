@@ -50,7 +50,8 @@ per-dimension and per-kind scores, negotiation statistics and latency.
 On this benchmark the workflow scores 97.9/100 and the agentic organization 54.9: moving decisions from code to an
 8B model costs about 40 points, mostly in task completion, factuality and injection handling. Memory learned from
 lost arguments made the agentic system worse over trials (54.9 to 47.5, trial score 0.455 to 0.376), and made no
-measurable difference in the workflow (97.9 vs.\ 98.0). The ablations without the opponent and with RAG were not
+measurable difference in the workflow (97.9 vs.\ 98.0). Specialists also know the people they write to: contact cards
+are injected into the prompt and updated from the replies the owner validates. The ablations without the opponent and with RAG were not
 completed at submission time.
 \end{abstract}
 
@@ -236,25 +237,6 @@ index for every request, so an edited file applies at once.}
 \label{fig:rag}
 \end{figure}
 
-\paragraph{Knowledge about people.}
-Specialists also know the people they write to. A \emph{contact card} (\code{context/recipients.json}) holds a person's
-name, role, organization and free notes, for instance ``prefers formal French'', and the last three replies the owner
-validated for that person. Three mechanisms use it:
-\begin{enumerate}
-  \item \emph{Automatic injection.} When a request names a person (address, full name or a distinctive part of the
-        name), the card is added to the prompt of the chosen specialist under ``what you know about the people named in
-        the request''. The chat page lists the cards used for each answer.
-  \item \emph{Lookup.} \code{lookup\_contact} returns the address and the card; the benchmark's directory is consulted
-        first, the cards when it knows nobody of that name.
-  \item \emph{Learning from validation.} In Agents mode, the button ``Validate: remember for this person'' stores the
-        accepted reply in the recipient's card (created if unknown); the last three are kept, and they are given to the
-        agent the next time that person is concerned.
-\end{enumerate}
-The owner edits the cards in the ``People'' tab of the agents panel. Nothing is written by an agent on its own: a card
-changes only when the owner edits it or validates a reply, so an error or an injected e-mail cannot rewrite what the
-system believes about someone. The earlier module \code{email-multiagent} follows the same idea
-(\code{RecipientKnowledgeBase}).
-
 \paragraph{Related module: category router and mail integration.}
 The repository also contains \code{email-multiagent}, an earlier and separate implementation of the minimal scenario of
 the project statement: a security agent, a router with interchangeable strategies (keyword, LLM, hybrid, feedback-weighted) over seven
@@ -269,6 +251,52 @@ cc and injection handling are decided by code, not by the model. It also has a c
 lessons go to a memory (Section~\ref{sec:wfmem}).
 
 % ============================================================
+\subsection{Knowledge about people}
+\label{sec:people}
+Specialists also know the people they write to. A \emph{contact card} (\code{context/recipients.json}) holds a person's
+name, role, organization and free notes, for instance ``prefers formal French'', and the last three replies the owner
+validated for that person. Three mechanisms use it:
+\begin{enumerate}
+  \item \emph{Automatic injection.} When a request names a person (address, full name or a distinctive part of the
+        name), the card is added to the prompt of the chosen specialist under ``what you know about the people named in
+        the request''. The chat page lists the cards used for each answer.
+  \item \emph{Lookup.} \code{lookup\_contact} returns the address and the card; the benchmark's directory is consulted
+        first, the cards when it knows nobody of that name.
+  \item \emph{Learning from validation.} In Agents mode, the button ``Validate: remember for this person'' stores the
+        accepted reply in the recipient's card (created if unknown); the last three are kept, and they are given to the
+        agent the next time that person is concerned.
+\end{enumerate}
+The owner edits the cards in the ``People'' tab of the agents panel (Figure~\ref{fig:people}). Nothing is written by an agent on its own: a card
+changes only when the owner edits it or validates a reply, so an error or an injected e-mail cannot rewrite what the
+system believes about someone. The earlier module \code{email-multiagent} follows the same idea
+(\code{RecipientKnowledgeBase}).
+
+\begin{figure}[ht]
+\centering
+\resizebox{\linewidth}{!}{\begin{tikzpicture}[
+  st/.style={draw, rounded corners, fill=blue!6, minimum width=34mm, minimum height=11mm, align=center, font=\small},
+  res/.style={draw, rounded corners, fill=green!10, minimum width=34mm, minimum height=11mm, align=center, font=\small},
+  own/.style={draw, rounded corners, fill=orange!12, minimum width=34mm, minimum height=11mm, align=center, font=\small},
+  lab/.style={font=\scriptsize, fill=white, inner sep=1pt},
+  ->, >={Stealth[length=2mm]}]
+  \node[own] (owner) at (0,0) {Owner\\{\scriptsize edits the cards}};
+  \node[st] (cards) at (6.6,0) {Contact cards\\{\scriptsize recipients.json}};
+  \node[st] (find) at (13.2,0) {Cards of the people\\named in the request};
+  \node[res] (prompt) at (19.8,0) {Prompt of the\\specialist};
+  \draw (owner) -- node[lab]{People tab} (cards);
+  \draw (cards) -- node[lab]{name or address} (find);
+  \draw (find) -- node[lab]{injected} (prompt);
+  \node[res] (draft) at (19.8,-2.4) {Draft reply};
+  \node[own] (valid) at (13.2,-2.4) {Owner validates\\the reply};
+  \draw (prompt) -- node[lab]{agents write} (draft);
+  \draw (draft) -- (valid);
+  \draw (valid) -- node[lab, pos=0.45]{last 3 replies kept} (cards);
+\end{tikzpicture}}
+\caption{Knowledge about people. A card is edited only by the owner. It reaches the prompt when a request names the
+person, and a reply the owner validates is stored back in the recipient's card.}
+\label{fig:people}
+\end{figure}
+
 \section{Architecture and main design choices}
 Each choice below states why we chose it, the evidence, and the alternatives we considered: a measurement on our
 benchmark, a failure we observed, or a requirement of the project statement.
@@ -570,11 +598,15 @@ two modes, chosen with a button in its top bar:
 \end{itemize}
 An \emph{Edit agents} panel lets the user, without touching the code:
 list the agents; change an agent's description (the line the router reads), system prompt and built-in context;
-create a new agent; and manage the agent's context documents (create, edit, delete, import a text file).
+create a new agent; manage the agent's context documents (create, edit, delete, import a text file); and, in its
+\emph{People} tab, create, edit and delete the contact cards (Section~\ref{sec:people}).
+In Agents mode each answer also lists the cards used, and the button \emph{Validate: remember for this person} stores
+the accepted reply in the recipient's card.
 The server re-reads the agents and their documents for every request, so a change applies to the next turn.
 It validates names and file names, limits a file to 100\,KB, writes only inside \code{specialists/} and \code{context/},
 and never deletes an agent. The mode was checked in a browser: creating an agent and a document, then sending a request,
-which was routed to the \code{teacher} agent with one passage of context.
+which was routed to the \code{teacher} agent with one passage of context. A request naming a professor received her card
+(formal French), and the draft was written accordingly, in French and addressed to her.
 
 \begin{table}[ht]
 \centering
