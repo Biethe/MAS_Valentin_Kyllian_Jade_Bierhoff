@@ -10,6 +10,8 @@ public class SummarizerSystemPrompt {
 
             Write the summary in the language the prompt names. Keep names, email addresses, dates, and quoted facts exactly as given.
 
+            A summary is much shorter than its sources: use at most half of their words. Keep every date, deadline, place and required action. Drop greetings, thanks, compliments and side remarks. Do not copy the mails.
+
             Respond with the summary text only. No labels, no information list, no references, no email draft.
             """;
 

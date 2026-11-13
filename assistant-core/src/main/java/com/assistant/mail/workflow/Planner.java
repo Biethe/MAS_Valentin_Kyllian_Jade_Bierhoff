@@ -73,7 +73,10 @@ public class Planner {
         StringBuilder query = new StringBuilder(instruction.getBody() == null ? "" : instruction.getBody());
         for (Information fact : facts) query.append(' ').append(fact.getBody());
         try {
-            brief.setKnowledge(new ArrayList<>(knowledge.knowledgeFor(recipient, brief.getRecipientRole(), query.toString())));
+            List<String> background = new ArrayList<>(knowledge.knowledgeFor(recipient, brief.getRecipientRole(), query.toString()));
+            // a summary is about the mails only: profile passages would be summarised instead of them
+            if (brief.getTask() == InstructionType.SUMMARIZE) background.removeIf(line -> !line.startsWith("Contact "));
+            brief.setKnowledge(background);
         } catch (RuntimeException e) {
             brief.setKnowledge(new ArrayList<>()); // background is optional: never block the task on it
         }
@@ -141,23 +144,32 @@ public class Planner {
             run.questions.add(ask(QuestionReason.NO_MAIL, body, userLanguage));
             return;
         }
+        if (asksForThread(body)) expandThreads(selection);
         run.contexts.add(selection.context);
 
+        readInFull(selection);
         List<Information> facts = new ArrayList<>();
+        Map<Long, String> safeBodies = new LinkedHashMap<>();
         for (Email email : selection.emails) {
-            facts.addAll(read(body, "mail:\n" + text(email.getBody()), email.getId(), null));
+            String safe = guard(run, userLanguage, email.getId(), null, text(email.getBody()));
+            if (email.getId() != null) safeBodies.put(email.getId(), safe);
+            facts.addAll(read(body, "mail:\n" + safe, email.getId(), null));
         }
         for (AttachmentFile file : selection.files) {
-            facts.addAll(read(body, "file: " + file.getName() + "\n" + text(file), null, file.getName()));
+            String safe = guard(run, userLanguage, null, file.getName(), text(file));
+            facts.addAll(read(body, "file: " + file.getName() + "\n" + safe, null, file.getName()));
         }
         for (AttachmentFile file : selection.userFiles) {
-            facts.addAll(read(body, "file: " + file.getName() + "\n" + text(file), null, file.getName()));
+            String safe = guard(run, userLanguage, null, file.getName(), text(file));
+            facts.addAll(read(body, "file: " + file.getName() + "\n" + safe, null, file.getName()));
         }
 
         String mailBody = selection.emails.isEmpty() ? "" : text(selection.emails.get(0).getBody());
         Language language = Languages.output(instruction.getType(), instruction.getBody(), userLanguage, mailBody);
         Brief brief = brief(instruction, facts, selection, memory, language);
         brief.setAttachments(selection.files);
+        if (brief.getFacts().isEmpty()) brief.setFacts(new ArrayList<>(facts)); // the model kept none: keep all that were read
+        addSourceFacts(brief, selection, safeBodies);
         addKnowledge(brief, instruction, facts, selection);
         for (Map<String, String> gap : blocks(agent.complete(PlannerSystemPrompt.CRITIC, criticPrompt(instruction, brief, facts)))) {
             BriefPart part = enumValue(BriefPart.class, gap.get("part"));
@@ -355,6 +367,89 @@ public class Planner {
         return calls;
     }
 
+    private static final Pattern THREAD_WORDS = Pattern.compile(
+            "(?i)\\b(fil|thread|conversation|discussion|[eé]changes?|cha[iî]ne)\\b");
+
+    public static boolean asksForThread(String instruction) {
+        return instruction != null && THREAD_WORDS.matcher(instruction).find();
+    }
+
+    /** "Summarize the thread": every mail of the thread of a selected mail is read, oldest first. */
+    private void expandThreads(Selection selection) {
+        for (Email chosen : new ArrayList<>(selection.emails)) {
+            String threadId = chosen.getThreadId();
+            if (threadId == null || threadId.isBlank()) continue;
+            try {
+                EmailThread thread = mail.readThread(threadId);
+                if (thread == null) continue;
+                selection.context.getThreadIds().add(threadId);
+                for (Email email : thread.getEmails()) {
+                    int at = -1;
+                    for (int i = 0; i < selection.emails.size(); i++) {
+                        Long known = selection.emails.get(i).getId();
+                        if (known != null && known.equals(email.getId())) at = i;
+                    }
+                    if (at < 0) selection.emails.add(email);
+                    else selection.emails.set(at, email); // the thread read is the full mail, not the search snippet
+                }
+            } catch (RuntimeException e) {
+                // keep what was selected
+            }
+        }
+    }
+
+    /**
+     * A small model keeps the gist of a mail and loses the date and the room. A short mail is therefore also
+     * given to the writer whole, as one fact, so concrete details are never lost between reading and writing.
+     */
+    private static void addSourceFacts(Brief brief, Selection selection, Map<Long, String> safeBodies) {
+        if (brief.getTask() == InstructionType.SUMMARIZE) return; // a summary built from whole mails just copies them
+        for (Email email : selection.emails) {
+            String safe = email.getId() == null ? null : safeBodies.get(email.getId());
+            if (safe == null || safe.isBlank() || safe.length() > 1200) continue;
+            boolean present = brief.getFacts().stream().anyMatch(f -> safe.equals(f.getBody()));
+            if (present) continue;
+            Information whole = new Information(safe, InformationKind.INFORMATIVE, null);
+            whole.setSourceEmailId(email.getId());
+            brief.getFacts().add(whole);
+        }
+    }
+
+    /** A search hit is only a snippet: open it with read_mail so the facts come from the whole mail. */
+    private void readInFull(Selection selection) {
+        for (int i = 0; i < selection.emails.size(); i++) {
+            Email hit = selection.emails.get(i);
+            if (hit.getId() == null) continue;
+            try {
+                if (!mail.unread(hit.getId())) continue;
+                Email full = mail.readMail(String.valueOf(hit.getId()));
+                if (full != null && full.getBody() != null) {
+                    if (full.getId() == null) full.setId(hit.getId());
+                    if (full.getSender() == null) full.setSender(hit.getSender());
+                    selection.emails.set(i, full);
+                }
+            } catch (RuntimeException e) {
+                // keep the snippet: a failed read must not stop the task
+            }
+        }
+    }
+
+    /** Removes orders hidden in the text, records them, and returns the text the models may read. */
+    private static String guard(Run run, Language language, Long emailId, String file, String text) {
+        InjectionGuard.Result scanned = InjectionGuard.scan(text);
+        for (String segment : scanned.suspicious()) {
+            run.flagged.add(new Flag(emailId, file, segment));
+            String where = emailId != null ? (language == Language.FR ? "le mail " : "mail ") + emailId
+                    : (language == Language.FR ? "le fichier " : "file ") + file;
+            run.warnings.add(language == Language.FR
+                    ? "Attention : " + where + " contient une instruction qui ne vient pas de vous, ignorée : « "
+                            + InjectionGuard.quote(segment) + " »"
+                    : "Warning: " + where + " contains an instruction that did not come from you, ignored: \""
+                            + InjectionGuard.quote(segment) + "\"");
+        }
+        return scanned.clean();
+    }
+
     private List<Information> read(String instruction, String document, Long sourceEmailId, String sourceFile) {
         if (document.isBlank()) {
             return List.of();
@@ -387,7 +482,7 @@ public class Planner {
         brief.setTo(addresses(values(raw, "to")));
         brief.setCc(addresses(values(raw, "cc")));
         if (instruction.getType() == InstructionType.REPLY && !selection.emails.isEmpty()) {
-            fixReplyRecipient(brief, selection.emails.get(0));
+            fixReplyRecipient(brief, selection.emails.get(0), instruction.getBody());
         }
         brief.setLanguage(language);
         brief.setRecipientRole(emptyToNull(field(raw, "recipientRole")));
@@ -417,14 +512,26 @@ public class Planner {
         return out;
     }
 
-    /** A reply goes to the sender. A model that wrote the user's own address (or nothing) is corrected. */
-    public static void fixReplyRecipient(Brief brief, Email original) {
+    /**
+     * A reply goes to the sender. An address the model wrote that appears neither in the instruction nor in
+     * the mail (the user's own address, or an invented one) is replaced by the sender.
+     */
+    public static void fixReplyRecipient(Brief brief, Email original, String instruction) {
         String sender = original.getSender() == null ? null : original.getSender().getEmail();
         if (sender == null || sender.isBlank()) return;
+        String known = ((instruction == null ? "" : instruction) + " " + sender + " " + String.join(" ", original.getRecipients())
+                + " " + (original.getBody() == null ? "" : original.getBody())).toLowerCase();
         boolean hasSender = brief.getTo().stream().anyMatch(sender::equalsIgnoreCase);
         boolean ownAddress = brief.getTo().stream().anyMatch(
                 a -> original.getRecipients().stream().anyMatch(a::equalsIgnoreCase));
-        if (!hasSender && (brief.getTo().isEmpty() || ownAddress)) brief.setTo(new ArrayList<>(List.of(sender)));
+        boolean invented = brief.getTo().stream().anyMatch(a -> !known.contains(a.toLowerCase()));
+        if (!hasSender && (brief.getTo().isEmpty() || ownAddress || invented)) {
+            brief.setTo(new ArrayList<>(List.of(sender)));
+        }
+    }
+
+    public static void fixReplyRecipient(Brief brief, Email original) {
+        fixReplyRecipient(brief, original, "");
     }
 
     private Checklist checklist(Brief brief) {
@@ -885,5 +992,10 @@ public class Planner {
         public final List<Context> contexts = new ArrayList<>();
         public final ShortTermMemory disputes = new ShortTermMemory();
         public final Trace trace = new Trace();
+        /** Orders found inside mails or files and left out of every prompt. */
+        public final List<Flag> flagged = new ArrayList<>();
+        public final List<String> warnings = new ArrayList<>();
     }
+
+    public record Flag(Long emailId, String file, String text) {}
 }

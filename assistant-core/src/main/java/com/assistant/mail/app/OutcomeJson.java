@@ -42,6 +42,7 @@ public final class OutcomeJson {
         }
         out.put("summaries", summaries);
         out.put("progress", outcome.progress);
+        out.put("warnings", outcome.warnings);
         if (withTrace && outcome.trace != null) {
             List<Object> steps = new ArrayList<>();
             for (TraceStep s : outcome.trace.getSteps()) {

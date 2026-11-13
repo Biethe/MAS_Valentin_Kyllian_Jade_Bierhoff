@@ -6,12 +6,13 @@
 #   ./run.sh app                  full web app (IMAP inbox, router, summaries) on http://localhost:8080,
 #                                 with the Planner assistant at /assistant.html
 #   ./run.sh bench [args]         the benchmark (lint | check | run | diff | compare | show)
-#   ./run.sh bench-run [--mock]   run the real assistant through the benchmark's 20 scenarios
+#   ./run.sh bench-run [--only a,b] [--judge-model M] [--mock]   run the real assistant through the benchmark's scenarios (all 20, or the listed ids)
 #   ./run.sh test                 every test of every module
 #
 # Flags for cli / web / bench-run: --mock (no model, scripted answers), --model NAME,
 # --ollama-url URL, --mcp-mailbox (use MAILBOX_CMD), --port N.
 set -euo pipefail
+START_DIR="$(pwd)"
 cd "$(dirname "$0")"
 ROOT="$(pwd)"
 
@@ -45,9 +46,20 @@ case "$mode" in
   bench) mvn -q -DskipTests package -pl benchmark && cd benchmark && exec ./bench "$@" ;;
   bench-run)
     fresh_build
+    only=""; rest=()
+    while [[ $# -gt 0 ]]; do
+      if [[ "$1" == "--only" ]]; then only="$2"; shift 2;
+      elif [[ "$1" == "--judge-model" ]]; then export BENCH_JUDGE_MODEL="$2"; shift 2;
+      else rest+=("$1"); shift; fi
+    done
     cd benchmark
-    exec ./bench run --system "$ROOT/run.sh bench-system $*" ;;
-  bench-system) build; exec java -cp "$(core_cp)" com.assistant.mail.bench.BenchSystem "$@" ;;
+    exec ./bench run ${only:+--only "$only"} --system "'$ROOT/run.sh' bench-system ${rest[*]:-}" ;;
+  bench-system)
+    # called by ./bench from benchmark/: its MAILBOX_CMD uses paths relative to that folder
+    build
+    export CONTEXT_DIR="${CONTEXT_DIR:-$ROOT/context}"
+    cd "$START_DIR"
+    exec java -cp "$ROOT/assistant-core/target/classes:$ROOT/assistant-core/target/lib/*" com.assistant.mail.bench.BenchSystem "$@" ;;
   test) exec mvn test ;;
   *) sed -n '2,14p' "$0"; exit 2 ;;
 esac

@@ -115,8 +115,11 @@ class AssistantTest {
         com.assistant.mail.workflow.Planner.fixReplyRecipient(brief, InMemoryMailbox.demo().all().get(0));
         assertEquals(java.util.List.of("ada@u.test"), brief.getTo());
         brief.setTo(new java.util.ArrayList<>(java.util.List.of("tom@u.test")));
-        com.assistant.mail.workflow.Planner.fixReplyRecipient(brief, InMemoryMailbox.demo().all().get(0));
-        assertEquals(java.util.List.of("tom@u.test"), brief.getTo()); // a deliberate other recipient is kept
+        com.assistant.mail.workflow.Planner.fixReplyRecipient(brief, InMemoryMailbox.demo().all().get(0),
+                "Réponds à Ada et mets tom@u.test comme destinataire");
+        assertEquals(java.util.List.of("tom@u.test"), brief.getTo()); // an address the user named is kept
+        com.assistant.mail.workflow.Planner.fixReplyRecipient(brief, InMemoryMailbox.demo().all().get(0), "Réponds à Ada");
+        assertEquals(java.util.List.of("ada@u.test"), brief.getTo()); // an invented address is replaced
     }
 
     @Test void addressesLoseBracketsQuotesAndPlaceholders() {

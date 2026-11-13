@@ -12,7 +12,7 @@ public final class AssistantConfig {
     public Llm llm = Llm.OLLAMA;
     public Mailbox mailbox = Mailbox.DEMO;
     public String ollamaUrl = "http://localhost:11434";
-    public String model = "llama3.1:8b";
+    public String model = "qwen3:4b"; // light by default; any installed instruction model is picked if absent
     public int port = 8090;
     /** Folder with one sub-folder per profile and recipients.json; null disables retrieval. */
     public String contextDir = "context";

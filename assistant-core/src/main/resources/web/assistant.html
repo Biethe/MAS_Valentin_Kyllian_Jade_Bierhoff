@@ -45,6 +45,7 @@ document.getElementById('f').addEventListener('submit', async e => {
     const r = await fetch('/api/assistant', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ text }) });
     res = await r.json(); if (!r.ok) { add('', 'erreur', res.error || r.status); return; }
   } catch (err) { add('', 'erreur', String(err)); return; }
+  (res.warnings || []).forEach(w => add('', 'attention', w));
   res.chats.forEach(c => add('', 'assistant', c));
   res.refused.forEach(c => add('', 'refus', c));
   res.questions.forEach(q => add('', 'question', q.text + (q.options.length ? '\n- ' + q.options.join('\n- ') : '')));

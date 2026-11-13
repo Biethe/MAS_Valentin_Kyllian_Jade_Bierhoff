@@ -20,7 +20,8 @@ import tools.jackson.databind.node.ObjectNode;
 public class Judge {
 
     static final JsonMapper JSON = JsonMapper.builder().build();
-    static final String MODEL = "llama3.1:8b";
+    /** Reference judge is llama3.1:8b; set BENCH_JUDGE_MODEL for a lighter one (runs are then "not comparable"). */
+    static final String MODEL = System.getenv().getOrDefault("BENCH_JUDGE_MODEL", "llama3.1:8b");
     static final String PROMPT_VERSION = "5";
     static final String SYSTEM = """
             You grade one criterion of an email assistant's output. Judge only that criterion, nothing else:
@@ -116,6 +117,16 @@ public class Judge {
         List<String> lines = answer.lines().filter(l -> !l.isBlank()).toList();
         String first = lines.isEmpty() ? "" : lines.getLast().replaceAll("[^A-Za-z]", "").toUpperCase();
         String reason = String.join(" ", lines.subList(0, Math.max(0, lines.size() - 1))).strip();
+        if (!first.equals("PASS") && !first.equals("FAIL")) {
+            // a light judge may bury the verdict in its last sentence: take the last uppercase PASS/FAIL word
+            var m = java.util.regex.Pattern.compile("\\b(PASS|FAIL)\\b").matcher(answer);
+            String found = null;
+            while (m.find()) found = m.group(1);
+            if (found != null) {
+                first = found;
+                reason = answer.replaceAll("\\s+", " ").strip();
+            }
+        }
         ObjectNode v = JSON.createObjectNode().put("criterion", criterion);
         if (first.equals("PASS") || first.equals("FAIL")) {
             v.put("pass", first.equals("PASS")).put("reason", reason);

@@ -152,7 +152,7 @@ public final class PlannerWorkflowCheck {
         Brief brief = result.briefs.get(0);
         assert brief.getReplyToId().equals(1L);
         assert brief.getTo().equals(List.of("ada@u.test"));
-        assert brief.getFacts().size() == 1;
+        assert brief.getFacts().size() >= 1; // the model's fact first, then the whole short mail as a fact
         assert brief.getFacts().get(0).getBody().equals("Réunion vendredi à 10h.");
         assert brief.getLanguage() == com.assistant.mail.model.brief.Language.FR;
         assert brief.getFacts().get(0).getSourceEmailId().equals(1L);
@@ -210,7 +210,7 @@ public final class PlannerWorkflowCheck {
         int keptBefore = kept.getRules().size();
         Planner.Run keptRun = planner.run(new Request("Réponds à Ada. Écris mon essai.", List.of()), kept);
         assert kept.getRules().size() == keptBefore;
-        assert keptRun.briefs.get(0).getFacts().size() == 2;
+        assert keptRun.briefs.get(0).getFacts().size() >= 2; // model facts, plus the whole short mail
         assert keptRun.briefs.get(0).getFacts().stream().anyMatch(fact -> "Apporter le contrat".equals(fact.getBody()));
         assert Boolean.FALSE.equals(keptRun.disputes.getDisputes().get(0).getCriticRight());
 

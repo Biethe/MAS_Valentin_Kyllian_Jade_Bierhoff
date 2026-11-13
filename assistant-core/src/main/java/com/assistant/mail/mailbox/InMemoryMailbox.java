@@ -12,7 +12,7 @@ import java.util.Locale;
 import java.util.concurrent.atomic.AtomicLong;
 
 /** A mailbox held in memory: searchable, and drafts only. Nothing here can send a mail. */
-public final class InMemoryMailbox implements MailClientMcp {
+public class InMemoryMailbox implements MailClientMcp {
     private final List<Email> mails = new ArrayList<>();
     private final List<Draft> drafts = new ArrayList<>();
     private final AtomicLong nextDraft = new AtomicLong(1000);

@@ -18,7 +18,7 @@ public class OllamaClient {
     final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
 
     public String chat(String model, String system, String user) throws IOException, InterruptedException {
-        ObjectNode body = JSON.createObjectNode().put("model", model).put("stream", false);
+        ObjectNode body = JSON.createObjectNode().put("model", model).put("stream", false).put("think", false);
         body.putArray("messages")
                 .add(JSON.createObjectNode().put("role", "system").put("content", system))
                 .add(JSON.createObjectNode().put("role", "user").put("content", user));
@@ -27,7 +27,7 @@ public class OllamaClient {
                 .POST(HttpRequest.BodyPublishers.ofString(body.toString())).build();
         HttpResponse<String> res = http.send(req, HttpResponse.BodyHandlers.ofString());
         if (res.statusCode() != 200) throw new IOException("ollama " + res.statusCode() + ": " + res.body());
-        return JSON.readTree(res.body()).path("message").path("content").asString();
+        return JSON.readTree(res.body()).path("message").path("content").asString().replaceAll("(?s)<think>.*?</think>", "").strip();
     }
 
     /** The installed model's digest, or null if it isn't pulled. Throws if Ollama is unreachable. */

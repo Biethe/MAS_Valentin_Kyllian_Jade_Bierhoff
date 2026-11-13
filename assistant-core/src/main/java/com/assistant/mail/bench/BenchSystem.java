@@ -62,6 +62,13 @@ public final class BenchSystem {
                 items.add(item);
             }
         }
+        for (var flag : outcome.flagged) {
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("kind", "SUSPICIOUS_INSTRUCTION");
+            item.put("text", flag.text());
+            if (flag.emailId() != null) item.put("sourceMailId", "m" + flag.emailId());
+            items.add(item);
+        }
         if (!items.isEmpty()) {
             steps.add(step("facts", "planner", "atomic_information", Map.of(), Map.of("items", items), model, 0));
         }
@@ -89,7 +96,8 @@ public final class BenchSystem {
         } else {
             output.put("question", String.join(" ", outcome.refused) + String.join(" ", outcome.chats));
         }
-        List<String> said = new ArrayList<>(outcome.refused);
+        List<String> said = new ArrayList<>(outcome.warnings);
+        said.addAll(outcome.refused);
         said.addAll(outcome.chats);
         if (!said.isEmpty()) output.put("message", String.join(" ", said));
         steps.add(step("output", actor, name, Map.of(), output, model, ms));

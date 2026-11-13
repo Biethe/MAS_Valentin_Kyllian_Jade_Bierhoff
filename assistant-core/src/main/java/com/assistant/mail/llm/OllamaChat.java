@@ -80,7 +80,7 @@ public final class OllamaChat implements PlannerAgentClient, DrafterAgentClient,
     }
 
     private static final java.util.List<String> PREFERRED = java.util.List.of(
-            "llama3.1", "qwen3", "qwen2.5", "mistral", "gemma", "llama3.3", "llama3");
+            "qwen3", "llama3.2", "qwen2.5", "gemma", "mistral", "llama3.1", "llama3");
 
     /**
      * The model to use: the requested one when installed, else the best installed instruction-following
@@ -102,17 +102,20 @@ public final class OllamaChat implements PlannerAgentClient, DrafterAgentClient,
         return s == null ? "" : s.lines().findFirst().orElse("");
     }
 
-    /** True when the server answers; used to fail early with a clear message. */
+    /** True when the server answers. A busy server (loading a model) is given time: 3 tries of 20 s. */
     public boolean reachable() {
-        try {
-            HttpRequest request = HttpRequest.newBuilder(URI.create(baseUrl + "/api/tags"))
-                    .timeout(Duration.ofSeconds(3)).build();
-            return http.send(request, HttpResponse.BodyHandlers.discarding()).statusCode() == 200;
-        } catch (IOException e) {
-            return false;
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            return false;
+        for (int attempt = 0; attempt < 3; attempt++) {
+            try {
+                HttpRequest request = HttpRequest.newBuilder(URI.create(baseUrl + "/api/tags"))
+                        .timeout(Duration.ofSeconds(20)).build();
+                if (http.send(request, HttpResponse.BodyHandlers.discarding()).statusCode() == 200) return true;
+            } catch (IOException e) {
+                // try again
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return false;
+            }
         }
+        return false;
     }
 }

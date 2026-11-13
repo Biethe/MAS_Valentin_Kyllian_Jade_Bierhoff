@@ -36,7 +36,7 @@ public class Bench {
         switch (cmd) {
             case "lint" -> System.exit(lint() ? 0 : 1);
             case "check" -> System.exit(check());
-            case "run" -> System.exit(run(flag(args, "--system", null), Integer.parseInt(flag(args, "--repeat", "1"))));
+            case "run" -> System.exit(run(flag(args, "--system", null), Integer.parseInt(flag(args, "--repeat", "1")), flag(args, "--only", "")));
             case "diff" -> diff();
             case "compare" -> System.exit(compare(args.length > 2 ? RUNS.resolve(args[1]) : null,
                     args.length > 2 ? RUNS.resolve(args[2]) : null));
@@ -122,7 +122,7 @@ public class Bench {
     }
 
     /** Runs any system through every scenario, records the setup, and prints the verdict against the previous run. */
-    static int run(String system, int repeat) throws Exception {
+    static int run(String system, int repeat, String only) throws Exception {
         if (system == null || repeat < 1) {
             System.err.println("usage: ./bench run --system \"<command>\" [--repeat N]");
             return 2;
@@ -141,7 +141,9 @@ public class Bench {
         String university = Files.readString(SCENARIOS.resolve("university.json"));
         ObjectNode results = JSON.createObjectNode().put("runId", run.getFileName().toString()).put("system", system);
         List<Path> scenarios = list(SCENARIOS, ".json").stream()
-                .filter(p -> !Set.of("university.json", "tone-profiles.json").contains(p.getFileName().toString())).toList();
+                .filter(p -> !Set.of("university.json", "tone-profiles.json").contains(p.getFileName().toString()))
+                .filter(p -> only.isBlank() || Set.of(only.split(",")).contains(p.getFileName().toString().replace(".json", "")))
+                .toList();
         StringBuilder all = new StringBuilder();
         for (Path p : list(SCENARIOS, ".json")) all.append(Files.readString(p));
         String dirty = sh("git", "status", "--porcelain");

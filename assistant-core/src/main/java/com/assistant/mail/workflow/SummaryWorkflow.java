@@ -42,8 +42,17 @@ public final class SummaryWorkflow {
         List<Dispute> disputes = new ArrayList<>();
         StringBuilder corrections = new StringBuilder();
         debate(brief, checklist, body, disputes, corrections);
+        String tooLong = lengthCorrection(brief, body);
+        if (tooLong != null) corrections.append(tooLong);
         if (corrections.length() > 0) {
             body = call(SummarizerSystemPrompt.REWRITE, rewritePrompt(brief, checklist, body, corrections)).trim();
+            clear(checklist);
+            mark(checklist, body);
+        }
+        int limit = lengthLimit(brief);
+        if (limit > 0 && words(body) > limit) {
+            // the model did not shorten it: keep the sentences richest in dates, numbers and places
+            body = fit(body, limit);
             clear(checklist);
             mark(checklist, body);
         }
@@ -52,6 +61,64 @@ public final class SummaryWorkflow {
         summary.setInformation(covered(brief, checklist));
         summary.setReferences(references(brief));
         return new Result(summary, disputes);
+    }
+
+    /** A summary longer than half of its sources is a copy: ask once for a shorter one. Null when the length is fine. */
+    static String lengthCorrection(Brief brief, String body) {
+        int limit = lengthLimit(brief);
+        if (limit < 0 || words(body) <= limit + 5) return null;
+        return "part: FACT\nexpected: at most " + limit + " words\ninstead: shorten to at most " + limit
+                + " words; keep every date, deadline, place and required action; remove greetings, thanks and side remarks\n";
+    }
+
+    /** Word budget of a summary: under half of the source words (minus a margin), or -1 when the sources are tiny. */
+    static int lengthLimit(Brief brief) {
+        int source = 0;
+        for (var email : brief.getEmails()) source += words(email.getBody());
+        if (source == 0) for (var fact : brief.getFacts()) source += words(fact.getBody());
+        return source < 40 ? -1 : Math.max(20, source / 2 - 5);
+    }
+
+    private static final java.util.regex.Pattern DETAIL = java.util.regex.Pattern.compile(
+            "(?i)\\d|janvier|f[eé]vrier|mars|avril|mai|juin|juillet|ao[uû]t|septembre|octobre|novembre|d[eé]cembre|"
+                    + "january|february|march|april|june|july|august|september|october|november|december|"
+                    + "lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche|monday|tuesday|wednesday|thursday|friday|"
+                    + "salle|amphi|room|urgent|avant|before|deadline|attendu|expected");
+
+    /** Keeps whole sentences, richest in details first, within {@code limit} words, in their original order. */
+    static String fit(String body, int limit) {
+        String[] sentences = body.strip().split("(?<=[.!?])\\s+");
+        Integer[] order = new Integer[sentences.length];
+        double[] score = new double[sentences.length];
+        for (int i = 0; i < sentences.length; i++) {
+            order[i] = i;
+            int n = Math.max(1, words(sentences[i]));
+            var m = DETAIL.matcher(sentences[i]);
+            int hits = 0;
+            while (m.find()) hits++;
+            score[i] = (double) hits / n;
+        }
+        java.util.Arrays.sort(order, (a, b) -> Double.compare(score[b], score[a]));
+        boolean[] keep = new boolean[sentences.length];
+        int used = 0;
+        for (int i : order) {
+            int n = words(sentences[i]);
+            if (used + n <= limit) {
+                keep[i] = true;
+                used += n;
+            }
+        }
+        StringBuilder out = new StringBuilder();
+        for (int i = 0; i < sentences.length; i++) if (keep[i]) out.append(sentences[i].strip()).append(' ');
+        if (out.length() == 0) { // one sentence longer than the budget: cut at the budget
+            String[] w = body.strip().split("\\s+");
+            return String.join(" ", java.util.Arrays.copyOf(w, Math.min(limit, w.length)));
+        }
+        return out.toString().strip();
+    }
+
+    private static int words(String text) {
+        return text == null || text.isBlank() ? 0 : text.strip().split("\\s+").length;
     }
 
     private void debate(Brief brief, Checklist checklist, String body, List<Dispute> disputes, StringBuilder corrections) {

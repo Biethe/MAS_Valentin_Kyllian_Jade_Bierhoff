@@ -56,6 +56,7 @@ public final class AssistantCli {
     }
 
     static void show(Turn.Outcome o, PrintStream out) {
+        for (String warning : o.warnings) out.println(warning);
         for (String chat : o.chats) out.println(chat);
         for (String refusal : o.refused) out.println("Refus : " + refusal);
         for (Question q : o.questions) {

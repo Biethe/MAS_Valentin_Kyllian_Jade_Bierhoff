@@ -31,6 +31,8 @@ public final class Turn {
         Outcome outcome = new Outcome();
         outcome.trace = planned.trace;
         outcome.briefs.addAll(planned.briefs);
+        outcome.warnings.addAll(planned.warnings);
+        outcome.flagged.addAll(planned.flagged);
         outcome.questions.addAll(planned.questions);
         outcome.refused.addAll(planned.refused);
         outcome.chats.addAll(planned.chats);
@@ -72,6 +74,8 @@ public final class Turn {
         public final List<Summary> summaries = new ArrayList<>();
         public final List<String> progress = new ArrayList<>();
         public final List<Brief> briefs = new ArrayList<>();
+        public final List<String> warnings = new ArrayList<>();
+        public final List<Planner.Flag> flagged = new ArrayList<>();
         public Trace trace = new Trace();
     }
 }
