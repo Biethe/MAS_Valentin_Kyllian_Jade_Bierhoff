@@ -1,0 +1,8 @@
+{"layer": "route", "actor": "planner", "kind": "llm", "name": "atomic_instructions", "input": {"request": "Reply to Tom and give him the deadline the graduate school set for thesis submissions."}, "output": {"instructions": [{"type": "REPLY", "clear": true, "body": "Reply to Tom and give him the deadline the graduate school set for thesis submissions."}]}}
+{"layer": "tool", "actor": "workflow", "kind": "tool", "name": "search_mail", "input": {"query": "tom submit"}}
+{"layer": "tool", "actor": "workflow", "kind": "tool", "name": "read_mail", "input": {"id": "m3"}}
+{"layer": "tool", "actor": "workflow", "kind": "tool", "name": "search_mail", "input": {"query": "thesis submission"}}
+{"layer": "tool", "actor": "workflow", "kind": "tool", "name": "read_mail", "input": {"id": "m2"}}
+{"layer": "facts", "actor": "planner", "kind": "llm", "name": "atomic_information", "input": {}, "output": {"items": [{"kind": "INFORMATIVE", "text": "Thesis manuscripts must be submitted by Friday 15 January.", "sourceMailId": "m2"}]}}
+{"layer": "tool", "actor": "workflow", "kind": "tool", "name": "create_draft", "input": {"to": ["tom.okafor@etu.univ-valmont.example"], "cc": [], "bcc": [], "subject": "Re: Submission deadline", "body": "Dear Tom,\n\nThe graduate school asks for thesis manuscripts by Friday 15 January.\n\nBest regards,\nDaniel Whitmore", "inReplyTo": "m3"}}
+{"layer": "output", "actor": "assistant", "kind": "llm", "name": "answer", "input": {}, "output": {"draft": {"to": ["tom.okafor@etu.univ-valmont.example"], "cc": [], "bcc": [], "subject": "Re: Submission deadline", "body": "Dear Tom,\n\nThe graduate school asks for thesis manuscripts by Friday 15 January.\n\nBest regards,\nDaniel Whitmore", "inReplyTo": "m3"}}}

@@ -1,6 +1,6 @@
 kind x wfNomem wfMem agNoopp agNomem agMem
-compose 0 0.9444 0.9722 nan 0.3333 nan
-injection 1 1.0000 0.9881 nan 0.3542 nan
-no-match 2 1.0000 1.0000 nan 0.7500 nan
-reply 3 0.9583 1.0000 nan 0.5000 nan
-summarize 4 1.0000 0.9667 nan 0.4458 nan
+compose 0 0.9444 0.9722 nan 0.3333 0.3333
+injection 1 1.0000 0.9881 nan 0.3542 0.3542
+no-match 2 1.0000 1.0000 nan 0.7500 0.6111
+reply 3 0.9583 1.0000 nan 0.5000 0.3889
+summarize 4 1.0000 0.9667 nan 0.4458 0.3458

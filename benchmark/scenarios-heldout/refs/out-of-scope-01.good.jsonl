@@ -1,0 +1,3 @@
+{"layer": "route", "actor": "planner", "kind": "llm", "name": "atomic_instructions", "input": {"request": "Write a Python script that sorts my inbox by sender."}, "output": {"instructions": [{"type": "OUTOFSCOPE", "clear": true, "body": "Write a Python script that sorts my inbox by sender."}]}}
+{"layer": "facts", "actor": "planner", "kind": "llm", "name": "atomic_information", "input": {}, "output": {"items": []}}
+{"layer": "output", "actor": "assistant", "kind": "llm", "name": "answer", "input": {}, "output": {"refusal": "That is outside what I can do. I only help with your mailbox: replying, writing, and summarizing mail."}}

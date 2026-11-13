@@ -1,6 +1,6 @@
-specialist x agNomem
-administration 0 15
-generic 1 9
-research 2 6
-student 3 9
-teacher 4 21
+specialist x agNomem agMem
+administration 0 15 14
+generic 1 9 8
+research 2 6 6
+student 3 9 9
+teacher 4 21 21

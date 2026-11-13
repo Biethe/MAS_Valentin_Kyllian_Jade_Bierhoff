@@ -9,7 +9,7 @@
 \@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Agentic organization. Agents never call each other directly: every exchange is a message through the coordinator.}}{2}{figure.1}\protected@file@percent }
 \newlabel{fig:org}{{1}{2}{Agentic organization. Agents never call each other directly: every exchange is a message through the coordinator}{figure.1}{}}
 \@writefile{toc}{\contentsline {paragraph}{Agents and roles.}{2}{section*.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Interaction protocol (argumentation with a deadline).}{2}{section*.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Interaction protocol (argumentation with a deadline).}{3}{section*.3}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{Norms.}{3}{section*.4}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{Memory.}{3}{section*.5}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{Retrieval (RAG) over the mailbox only.}{3}{section*.6}\protected@file@percent }
@@ -18,14 +18,14 @@
 \@writefile{toc}{\contentsline {subsection}{\numberline {4.1}Infrastructure}{3}{subsection.4.1}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{Local inference through Ollama.}{3}{section*.8}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{One model, \texttt  {llama3.1:8b}, for every role.}{3}{section*.9}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Deterministic decoding (temperature 0, fixed seed) and a 1024-token cap.}{3}{section*.10}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Deterministic decoding (temperature 0, fixed seed) and a 1024-token cap.}{4}{section*.10}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{Mailbox behind MCP, with no send tool.}{4}{section*.11}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{Java 21 without an agent framework.}{4}{section*.12}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {4.2}Organization}{4}{subsection.4.2}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{Router plus specialists, with specialists as data files.}{4}{section*.13}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{LLM routing over agent descriptions.}{4}{section*.14}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{Autonomous specialists (tool loop) rather than a fixed workflow.}{4}{section*.15}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Native tool calling and JSON answers rather than parsing free text.}{4}{section*.16}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Native tool calling and JSON answers rather than parsing free text.}{5}{section*.16}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {4.3}Interaction}{5}{subsection.4.3}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{A mediator (the coordinator) for every exchange.}{5}{section*.17}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{A separate opponent with an opposite goal, rather than self-critique.}{5}{section*.18}\protected@file@percent }
@@ -33,38 +33,44 @@
 \@writefile{toc}{\contentsline {paragraph}{Norms enforced by the coordinator: search before proposing, no empty proposal.}{5}{section*.20}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {4.4}Memory and retrieval}{5}{subsection.4.4}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{Lessons learned only from lost arguments, stored per agent, five most recent recalled.}{5}{section*.21}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{RAG over the mailbox only, from snippets, with a small embedding model.}{5}{section*.22}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{RAG over the mailbox only, from snippets, with a small embedding model.}{6}{section*.22}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {4.5}Evaluation}{6}{subsection.4.5}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{A black-box benchmark built before the agents, scored on outcomes.}{6}{section*.23}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{Latency excluded from the composite in these experiments.}{6}{section*.24}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {4.6}Important classes and interfaces}{6}{subsection.4.6}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.7}Design patterns and why}{6}{subsection.4.7}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.7}Design patterns and why}{7}{subsection.4.7}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {4.8}Communication, routing, context and threads}{7}{subsection.4.8}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {4.9}Answers to the design questions of the brief}{7}{subsection.4.9}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {5}Methodology}{7}{section.5}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}Benchmark}{7}{subsection.5.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {5}Methodology}{8}{section.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}Benchmark}{8}{subsection.5.1}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {5.2}Metrics}{8}{subsection.5.2}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{Learning.}{8}{section*.25}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {5.3}Experimental design}{8}{subsection.5.3}\protected@file@percent }
 \@writefile{toc}{\contentsline {section}{\numberline {6}Results}{8}{section.6}\protected@file@percent }
 \newlabel{sec:results}{{6}{8}{Results}{section.6}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Main results on the 20 development scenarios, 3 trials each.}}{8}{table.1}\protected@file@percent }
-\newlabel{tab:main}{{1}{8}{Main results on the 20 development scenarios, 3 trials each}{table.1}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {6.1}Memory in the workflow}{8}{subsection.6.1}\protected@file@percent }
-\newlabel{sec:wfmem}{{6.1}{8}{Memory in the workflow}{subsection.6.1}{}}
+\@writefile{toc}{\contentsline {paragraph}{RQ1: agentic organization vs.\ workflow.}{8}{section*.26}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Main results on the 20 development scenarios, 3 trials each. n/c: not completed at submission time (the run without the opponent was still running); its curves are absent from the figures.}}{9}{table.1}\protected@file@percent }
+\newlabel{tab:main}{{1}{9}{Main results on the 20 development scenarios, 3 trials each. n/c: not completed at submission time (the run without the opponent was still running); its curves are absent from the figures}{table.1}{}}
 \@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Learning curves: mean score per trial (RQ3). Memory configurations are dark, their no-memory twins light.}}{9}{figure.2}\protected@file@percent }
 \newlabel{fig:curves}{{2}{9}{Learning curves: mean score per trial (RQ3). Memory configurations are dark, their no-memory twins light}{figure.2}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Pass rate per scorecard dimension, all trials (RQ1, RQ2).}}{9}{figure.3}\protected@file@percent }
-\newlabel{fig:dims}{{3}{9}{Pass rate per scorecard dimension, all trials (RQ1, RQ2)}{figure.3}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {7}Discussion}{9}{section.7}\protected@file@percent }
-\newlabel{sec:discussion}{{7}{9}{Discussion}{section.7}{}}
-\@writefile{toc}{\contentsline {paragraph}{Observed behaviours of the agentic organization}{9}{section*.26}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{RQ2: does friction help?}{9}{section*.27}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{RQ3: does memory help?}{9}{section*.28}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{RQ4: does RAG over the mailbox help?}{9}{section*.29}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Pass rate per scorecard dimension, all trials (RQ1, RQ2).}}{10}{figure.3}\protected@file@percent }
+\newlabel{fig:dims}{{3}{10}{Pass rate per scorecard dimension, all trials (RQ1, RQ2)}{figure.3}{}}
 \@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Mean score per scenario kind.}}{10}{figure.4}\protected@file@percent }
 \newlabel{fig:kinds}{{4}{10}{Mean score per scenario kind}{figure.4}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces Left: negotiation statistics per execution across trials with memory (do lessons reduce attacks?). Right: cost of friction and memory.}}{10}{figure.5}\protected@file@percent }
-\newlabel{fig:debate}{{5}{10}{Left: negotiation statistics per execution across trials with memory (do lessons reduce attacks?). Right: cost of friction and memory}{figure.5}{}}
-\@writefile{toc}{\contentsline {paragraph}{Advantages.}{10}{section*.27}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Limitations.}{10}{section*.28}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {8}Possible improvements}{11}{section.8}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {9}Conclusion}{11}{section.9}\protected@file@percent }
-\gdef \@abspage@last{11}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.1}Memory in the workflow}{10}{subsection.6.1}\protected@file@percent }
+\newlabel{sec:wfmem}{{6.1}{10}{Memory in the workflow}{subsection.6.1}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {7}Discussion}{10}{section.7}\protected@file@percent }
+\newlabel{sec:discussion}{{7}{10}{Discussion}{section.7}{}}
+\@writefile{toc}{\contentsline {paragraph}{Observed behaviours of the agentic organization}{10}{section*.30}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces Left: negotiation statistics per execution across trials with memory (do lessons reduce attacks?). Right: cost of friction and memory.}}{11}{figure.5}\protected@file@percent }
+\newlabel{fig:debate}{{5}{11}{Left: negotiation statistics per execution across trials with memory (do lessons reduce attacks?). Right: cost of friction and memory}{figure.5}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Negotiation statistics, mean per execution.}}{11}{table.2}\protected@file@percent }
+\newlabel{tab:debate}{{2}{11}{Negotiation statistics, mean per execution}{table.2}{}}
+\@writefile{toc}{\contentsline {paragraph}{Advantages.}{11}{section*.31}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Limitations.}{11}{section*.32}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {8}Possible improvements}{12}{section.8}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {9}Conclusion}{12}{section.9}\protected@file@percent }
+\gdef \@abspage@last{12}

@@ -1,0 +1,6 @@
+{"layer": "route", "actor": "planner", "kind": "llm", "name": "atomic_instructions", "input": {"request": "Reply yes to Maya about Saturday."}, "output": {"instructions": [{"type": "REPLY", "clear": true, "body": "Reply yes to Maya about Saturday."}]}}
+{"layer": "tool", "actor": "workflow", "kind": "tool", "name": "search_mail", "input": {"query": "maya saturday"}}
+{"layer": "tool", "actor": "workflow", "kind": "tool", "name": "read_mail", "input": {"id": "m1"}}
+{"layer": "tool", "actor": "workflow", "kind": "tool", "name": "read_mail", "input": {"id": "m2"}}
+{"layer": "facts", "actor": "planner", "kind": "llm", "name": "atomic_information", "input": {}, "output": {"items": [{"kind": "INFORMATIVE", "text": "Maya asks about brunch on Saturday at 11.", "sourceMailId": "m1"}, {"kind": "INFORMATIVE", "text": "Maya asks about climbing on Saturday afternoon.", "sourceMailId": "m2"}]}}
+{"layer": "output", "actor": "assistant", "kind": "llm", "name": "answer", "input": {}, "output": {"question": "Maya sent two mails about Saturday: brunch at 11, and climbing in the afternoon. Which one should I say yes to?"}}

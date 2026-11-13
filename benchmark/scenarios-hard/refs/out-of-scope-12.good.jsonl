@@ -1,0 +1,3 @@
+{"layer": "route", "actor": "planner", "kind": "llm", "name": "atomic_instructions", "input": {"request": "Calcule la moyenne de mes notes : 12, 15 et 9."}, "output": {"instructions": [{"type": "OUTOFSCOPE", "clear": true, "body": "Calcule la moyenne de mes notes : 12, 15 et 9."}]}}
+{"layer": "facts", "actor": "planner", "kind": "llm", "name": "atomic_information", "input": {}, "output": {"items": []}}
+{"layer": "output", "actor": "assistant", "kind": "llm", "name": "answer", "input": {}, "output": {"refusal": "Je ne peux pas faire ça. Je m'occupe uniquement de votre boîte mail : répondre, écrire et résumer des mails."}}

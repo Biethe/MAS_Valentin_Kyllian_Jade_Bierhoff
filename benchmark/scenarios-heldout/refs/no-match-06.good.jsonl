@@ -1,0 +1,5 @@
+{"layer": "route", "actor": "planner", "kind": "llm", "name": "atomic_instructions", "input": {"request": "Réponds au mail du Dr. Lindqvist sur le budget du projet."}, "output": {"instructions": [{"type": "REPLY", "clear": true, "body": "Réponds au mail du Dr. Lindqvist sur le budget du projet."}]}}
+{"layer": "tool", "actor": "workflow", "kind": "tool", "name": "search_mail", "input": {"query": "lindqvist budget"}}
+{"layer": "tool", "actor": "workflow", "kind": "tool", "name": "search_mail", "input": {"query": "lindqvist"}}
+{"layer": "facts", "actor": "planner", "kind": "llm", "name": "atomic_information", "input": {}, "output": {"items": []}}
+{"layer": "output", "actor": "assistant", "kind": "llm", "name": "answer", "input": {}, "output": {"question": "Je ne trouve aucun mail du Dr. Lindqvist sur le budget du projet. Voulez-vous parler du mail du service financier sur le budget ANR ?"}}

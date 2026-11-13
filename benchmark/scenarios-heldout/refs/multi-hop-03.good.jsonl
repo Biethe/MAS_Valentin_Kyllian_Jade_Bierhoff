@@ -1,0 +1,7 @@
+{"layer": "route", "actor": "planner", "kind": "llm", "name": "atomic_instructions", "input": {"request": "What documents do I still have to send to the International Office?"}, "output": {"instructions": [{"type": "SUMMARIZE", "clear": true, "body": "What documents do I still have to send to the International Office?"}]}}
+{"layer": "tool", "actor": "workflow", "kind": "tool", "name": "search_mail", "input": {"query": "international@univ-valmont.example"}}
+{"layer": "tool", "actor": "workflow", "kind": "tool", "name": "read_mail", "input": {"id": "m1"}}
+{"layer": "tool", "actor": "workflow", "kind": "tool", "name": "read_mail", "input": {"id": "m2"}}
+{"layer": "tool", "actor": "workflow", "kind": "tool", "name": "read_mail", "input": {"id": "m3"}}
+{"layer": "facts", "actor": "planner", "kind": "llm", "name": "atomic_information", "input": {}, "output": {"items": [{"kind": "REQUIRED_ACTION", "text": "The Erasmus file still needs the signed learning agreement.", "sourceMailId": "m1"}, {"kind": "INFORMATIVE", "text": "The transcript and the passport copy were received.", "sourceMailId": "m3"}]}}
+{"layer": "output", "actor": "assistant", "kind": "llm", "name": "answer", "input": {}, "output": {"summary": "You still have to send the signed learning agreement. The International Office already received your transcript of records and your passport copy."}}

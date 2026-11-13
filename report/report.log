@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026) (preloaded format=pdflatex 2026.10.11)  13 NOV 2026 17:38
+This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026) (preloaded format=pdflatex 2026.10.11)  13 NOV 2026 18:06
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -545,7 +545,7 @@ Package uniquecounter Info: New unique counter `rerunfilecheck' on input line 28
 )
 \Hy@SectionHShift=\skip56
 )
-LaTeX Font Info:    Trying to load font information for T1+lmr on input line 34.
+LaTeX Font Info:    Trying to load font information for T1+lmr on input line 33.
 (/home/bierh/.TinyTeX/texmf-dist/tex/latex/lm/t1lmr.fd
 File: t1lmr.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 ) (/home/bierh/.TinyTeX/texmf-dist/tex/latex/l3kernel/l3backend-pdftex.def
@@ -554,24 +554,24 @@ File: l3backend-pdftex.def 2026-09-09 L3 backend support: PDF output (pdfTeX)
 ) (./report.aux)
 \openout1 = `report.aux'.
 
-LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 34.
-LaTeX Font Info:    ... okay on input line 34.
-LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 34.
-LaTeX Font Info:    ... okay on input line 34.
-LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 34.
-LaTeX Font Info:    ... okay on input line 34.
-LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 34.
-LaTeX Font Info:    ... okay on input line 34.
-LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 34.
-LaTeX Font Info:    ... okay on input line 34.
-LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 34.
-LaTeX Font Info:    ... okay on input line 34.
-LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 34.
-LaTeX Font Info:    ... okay on input line 34.
-LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 34.
-LaTeX Font Info:    ... okay on input line 34.
-LaTeX Font Info:    Checking defaults for PU/pdf/m/n on input line 34.
-LaTeX Font Info:    ... okay on input line 34.
+LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 33.
+LaTeX Font Info:    ... okay on input line 33.
+LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 33.
+LaTeX Font Info:    ... okay on input line 33.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 33.
+LaTeX Font Info:    ... okay on input line 33.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 33.
+LaTeX Font Info:    ... okay on input line 33.
+LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 33.
+LaTeX Font Info:    ... okay on input line 33.
+LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 33.
+LaTeX Font Info:    ... okay on input line 33.
+LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 33.
+LaTeX Font Info:    ... okay on input line 33.
+LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 33.
+LaTeX Font Info:    ... okay on input line 33.
+LaTeX Font Info:    Checking defaults for PU/pdf/m/n on input line 33.
+LaTeX Font Info:    ... okay on input line 33.
 *geometry* driver: auto-detecting
 *geometry* detected driver: pdftex
 *geometry* verbose mode - [ preamble ] result:
@@ -614,54 +614,58 @@ File: epstopdf-sys.cfg 2010/07/13 v1.3 Configuration of (r)epstopdf for TeX Live
 ))
 Package pgfplots notification 'compat/show suggested version=true': document has been generated with the most recent feature set (\pgfplotsset{compat=1.18}).
 
-Package hyperref Info: Link coloring OFF on input line 34.
+Package hyperref Info: Link coloring OFF on input line 33.
 (./report.out) (./report.out)
 \@outlinefile=\write4
 \openout4 = `report.out'.
 
-LaTeX Font Info:    Trying to load font information for T1+lmtt on input line 38.
+LaTeX Font Info:    Trying to load font information for T1+lmtt on input line 37.
 (/home/bierh/.TinyTeX/texmf-dist/tex/latex/lm/t1lmtt.fd
 File: t1lmtt.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 )
-LaTeX Font Info:    Trying to load font information for OT1+lmr on input line 41.
+LaTeX Font Info:    Trying to load font information for OT1+lmr on input line 40.
 (/home/bierh/.TinyTeX/texmf-dist/tex/latex/lm/ot1lmr.fd
 File: ot1lmr.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 )
-LaTeX Font Info:    Trying to load font information for OML+lmm on input line 41.
+LaTeX Font Info:    Trying to load font information for OML+lmm on input line 40.
 (/home/bierh/.TinyTeX/texmf-dist/tex/latex/lm/omllmm.fd
 File: omllmm.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 )
-LaTeX Font Info:    Trying to load font information for OMS+lmsy on input line 41.
+LaTeX Font Info:    Trying to load font information for OMS+lmsy on input line 40.
 (/home/bierh/.TinyTeX/texmf-dist/tex/latex/lm/omslmsy.fd
 File: omslmsy.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 )
-LaTeX Font Info:    Trying to load font information for OMX+lmex on input line 41.
+LaTeX Font Info:    Trying to load font information for OMX+lmex on input line 40.
 (/home/bierh/.TinyTeX/texmf-dist/tex/latex/lm/omxlmex.fd
 File: omxlmex.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 )
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <10> on input line 41.
+(Font)              <10> on input line 40.
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <7> on input line 41.
+(Font)              <7> on input line 40.
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <5> on input line 41.
+(Font)              <5> on input line 40.
 [1
 
 {/home/bierh/.TinyTeX/texmf-var/fonts/map/pdftex/updmap/pdftex.map}{/home/bierh/.TinyTeX/texmf-dist/fonts/enc/dvips/lm/lm-ec.enc}{/home/bierh/.TinyTeX/texmf-dist/fonts/enc/dvips/lm/lm-mathsy.enc}]
-LaTeX Font Info:    Trying to load font information for TS1+lmr on input line 79.
+LaTeX Font Info:    Trying to load font information for TS1+lmr on input line 82.
 (/home/bierh/.TinyTeX/texmf-dist/tex/latex/lm/ts1lmr.fd
 File: ts1lmr.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 )
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <10.95> on input line 129.
+(Font)              <10.95> on input line 132.
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <8> on input line 129.
+(Font)              <8> on input line 132.
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <6> on input line 129.
+(Font)              <6> on input line 132.
 [2{/home/bierh/.TinyTeX/texmf-dist/fonts/enc/dvips/lm/lm-ts1.enc}]
 LaTeX Font Info:    Font shape `T1/lmtt/bx/n' in size <10.95> not available
-(Font)              Font shape `T1/lmtt/b/n' tried instead on input line 180.
+(Font)              Font shape `T1/lmtt/b/n' tried instead on input line 183.
 [3] [4] [5] [6] [7]
+Overfull \hbox (59.02393pt too wide) in paragraph at lines 408--422
+ [][] 
+ []
+
 PGFPlots: reading {data/curves.csv}
 PGFPlots: reading {data/curves.csv}
 PGFPlots: reading {data/curves.csv}
@@ -669,18 +673,11 @@ NOTE: coordinate (1,nan) has been dropped because it is unbounded (in y). (see a
 NOTE: coordinate (2,nan) has been dropped because it is unbounded (in y). (see also unbounded coords=jump). 
 NOTE: coordinate (3,nan) has been dropped because it is unbounded (in y). (see also unbounded coords=jump). 
 
-Package pgfplots Warning: the current plot has no coordinates (or all have been filtered away) on input line 423.
+Package pgfplots Warning: the current plot has no coordinates (or all have been filtered away) on input line 433.
 
  [warning /pgfplots/warning/plot without coordinates]
 PGFPlots: reading {data/curves.csv}
 PGFPlots: reading {data/curves.csv}
-NOTE: coordinate (1,nan) has been dropped because it is unbounded (in y). (see also unbounded coords=jump). 
-NOTE: coordinate (2,nan) has been dropped because it is unbounded (in y). (see also unbounded coords=jump). 
-NOTE: coordinate (3,nan) has been dropped because it is unbounded (in y). (see also unbounded coords=jump). 
-
-Package pgfplots Warning: the current plot has no coordinates (or all have been filtered away) on input line 425.
-
- [warning /pgfplots/warning/plot without coordinates]
 PGFPlots: reading {data/dims.csv}
 PGFPlots: reading {data/dims.csv}
 PGFPlots: reading {data/dims.csv}
@@ -693,22 +690,11 @@ NOTE: coordinate (4,nan) has been dropped because it is unbounded (in y). (see a
 NOTE: coordinate (5,nan) has been dropped because it is unbounded (in y). (see also unbounded coords=jump). 
 NOTE: coordinate (6,nan) has been dropped because it is unbounded (in y). (see also unbounded coords=jump). 
 
-Package pgfplots Warning: the current plot has no coordinates (or all have been filtered away) on input line 439.
+Package pgfplots Warning: the current plot has no coordinates (or all have been filtered away) on input line 449.
 
  [warning /pgfplots/warning/plot without coordinates]
 PGFPlots: reading {data/dims.csv}
 PGFPlots: reading {data/dims.csv}
-NOTE: coordinate (0,nan) has been dropped because it is unbounded (in y). (see also unbounded coords=jump). 
-NOTE: coordinate (1,nan) has been dropped because it is unbounded (in y). (see also unbounded coords=jump). 
-NOTE: coordinate (2,nan) has been dropped because it is unbounded (in y). (see also unbounded coords=jump). 
-NOTE: coordinate (3,nan) has been dropped because it is unbounded (in y). (see also unbounded coords=jump). 
-NOTE: coordinate (4,nan) has been dropped because it is unbounded (in y). (see also unbounded coords=jump). 
-NOTE: coordinate (5,nan) has been dropped because it is unbounded (in y). (see also unbounded coords=jump). 
-NOTE: coordinate (6,nan) has been dropped because it is unbounded (in y). (see also unbounded coords=jump). 
-
-Package pgfplots Warning: the current plot has no coordinates (or all have been filtered away) on input line 441.
-
- [warning /pgfplots/warning/plot without coordinates]
 PGFPlots: reading {data/kinds.csv}
 PGFPlots: reading {data/kinds.csv}
 PGFPlots: reading {data/kinds.csv}
@@ -719,60 +705,27 @@ NOTE: coordinate (2,nan) has been dropped because it is unbounded (in y). (see a
 NOTE: coordinate (3,nan) has been dropped because it is unbounded (in y). (see also unbounded coords=jump). 
 NOTE: coordinate (4,nan) has been dropped because it is unbounded (in y). (see also unbounded coords=jump). 
 
-Package pgfplots Warning: the current plot has no coordinates (or all have been filtered away) on input line 455.
+Package pgfplots Warning: the current plot has no coordinates (or all have been filtered away) on input line 465.
 
  [warning /pgfplots/warning/plot without coordinates]
 PGFPlots: reading {data/kinds.csv}
 PGFPlots: reading {data/kinds.csv}
-NOTE: coordinate (0,nan) has been dropped because it is unbounded (in y). (see also unbounded coords=jump). 
-NOTE: coordinate (1,nan) has been dropped because it is unbounded (in y). (see also unbounded coords=jump). 
-NOTE: coordinate (2,nan) has been dropped because it is unbounded (in y). (see also unbounded coords=jump). 
-NOTE: coordinate (3,nan) has been dropped because it is unbounded (in y). (see also unbounded coords=jump). 
-NOTE: coordinate (4,nan) has been dropped because it is unbounded (in y). (see also unbounded coords=jump). 
-
-Package pgfplots Warning: the current plot has no coordinates (or all have been filtered away) on input line 457.
-
- [warning /pgfplots/warning/plot without coordinates]
 PGFPlots: reading {data/debate.csv}
 NOTE: coordinate (1,0.9000) has been dropped because it is unbounded (in x). (see also unbounded coords=jump). 
 NOTE: coordinate (2,0.9000) has been dropped because it is unbounded (in x). (see also unbounded coords=jump). 
 NOTE: coordinate (3,0.9000) has been dropped because it is unbounded (in x). (see also unbounded coords=jump). 
-NOTE: coordinate (1,nan) has been dropped because it is unbounded (in y). (see also unbounded coords=jump). 
-
-Package pgfplots Warning: the current plot has no coordinates (or all have been filtered away) on input line 469.
-
- [warning /pgfplots/warning/plot without coordinates]
 PGFPlots: reading {data/debate.csv}
 NOTE: coordinate (1,0.2000) has been dropped because it is unbounded (in x). (see also unbounded coords=jump). 
 NOTE: coordinate (2,0.1500) has been dropped because it is unbounded (in x). (see also unbounded coords=jump). 
 NOTE: coordinate (3,0.1500) has been dropped because it is unbounded (in x). (see also unbounded coords=jump). 
-NOTE: coordinate (1,nan) has been dropped because it is unbounded (in y). (see also unbounded coords=jump). 
-
-Package pgfplots Warning: the current plot has no coordinates (or all have been filtered away) on input line 470.
-
- [warning /pgfplots/warning/plot without coordinates]
 PGFPlots: reading {data/debate.csv}
 NOTE: coordinate (1,2.3500) has been dropped because it is unbounded (in x). (see also unbounded coords=jump). 
 NOTE: coordinate (2,2.7500) has been dropped because it is unbounded (in x). (see also unbounded coords=jump). 
 NOTE: coordinate (3,2.7500) has been dropped because it is unbounded (in x). (see also unbounded coords=jump). 
-NOTE: coordinate (1,nan) has been dropped because it is unbounded (in y). (see also unbounded coords=jump). 
-
-Package pgfplots Warning: the current plot has no coordinates (or all have been filtered away) on input line 471.
-
- [warning /pgfplots/warning/plot without coordinates]
 PGFPlots: reading {data/debate.csv}
 NOTE: coordinate (1,0.3000) has been dropped because it is unbounded (in x). (see also unbounded coords=jump). 
 NOTE: coordinate (2,0.2500) has been dropped because it is unbounded (in x). (see also unbounded coords=jump). 
 NOTE: coordinate (3,0.2500) has been dropped because it is unbounded (in x). (see also unbounded coords=jump). 
-NOTE: coordinate (1,nan) has been dropped because it is unbounded (in y). (see also unbounded coords=jump). 
-
-Package pgfplots Warning: the current plot has no coordinates (or all have been filtered away) on input line 472.
-
- [warning /pgfplots/warning/plot without coordinates]
-
-Package pgfplots Warning: You have an axis with empty range (in direction y). Replacing it with a default range and clearing all plots. on input line 473.
-
- [warning /pgfplots/warning/empty range cleared axis]
 PGFPlots: reading {data/latency.csv}
 PGFPlots: reading {data/latency.csv}
 PGFPlots: reading {data/latency.csv}
@@ -780,19 +733,12 @@ NOTE: coordinate (1,nan) has been dropped because it is unbounded (in y). (see a
 NOTE: coordinate (2,nan) has been dropped because it is unbounded (in y). (see also unbounded coords=jump). 
 NOTE: coordinate (3,nan) has been dropped because it is unbounded (in y). (see also unbounded coords=jump). 
 
-Package pgfplots Warning: the current plot has no coordinates (or all have been filtered away) on input line 480.
+Package pgfplots Warning: the current plot has no coordinates (or all have been filtered away) on input line 490.
 
  [warning /pgfplots/warning/plot without coordinates]
 PGFPlots: reading {data/latency.csv}
 PGFPlots: reading {data/latency.csv}
-NOTE: coordinate (1,nan) has been dropped because it is unbounded (in y). (see also unbounded coords=jump). 
-NOTE: coordinate (2,nan) has been dropped because it is unbounded (in y). (see also unbounded coords=jump). 
-NOTE: coordinate (3,nan) has been dropped because it is unbounded (in y). (see also unbounded coords=jump). 
-
-Package pgfplots Warning: the current plot has no coordinates (or all have been filtered away) on input line 482.
-
- [warning /pgfplots/warning/plot without coordinates]
-[8{/home/bierh/.TinyTeX/texmf-dist/fonts/enc/dvips/lm/lm-rm.enc}{/home/bierh/.TinyTeX/texmf-dist/fonts/enc/dvips/lm/lm-mathit.enc}{/home/bierh/.TinyTeX/texmf-dist/fonts/enc/dvips/lm/lm-mathex.enc}] [9] [10] [11] (./report.aux)
+[8{/home/bierh/.TinyTeX/texmf-dist/fonts/enc/dvips/lm/lm-rm.enc}{/home/bierh/.TinyTeX/texmf-dist/fonts/enc/dvips/lm/lm-mathit.enc}{/home/bierh/.TinyTeX/texmf-dist/fonts/enc/dvips/lm/lm-mathex.enc}] [9] [10] [11] [12] (./report.aux)
  ***********
 LaTeX2e <2026-06-01>
 L3 programming layer <2026-09-09>
@@ -801,18 +747,18 @@ Package rerunfilecheck Info: File `report.out' has not changed.
 (rerunfilecheck)             Checksum: FE22D7476B2BC0004EB0DF39E2FB7F69;3360.
  ) 
 Here is how much of TeX's memory you used:
- 32951 strings out of 469040
- 790765 string characters out of 5457101
- 1337897 words of memory out of 5000000
- 61458 multiletter control sequences out of 15000+600000
+ 32983 strings out of 469040
+ 791285 string characters out of 5457101
+ 1354636 words of memory out of 5000000
+ 61484 multiletter control sequences out of 15000+600000
  691183 words of font info for 77 fonts, out of 8000000 for 9000
  14 hyphenation exceptions out of 8191
- 107i,20n,108p,728b,2261s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 107i,20n,108p,728b,2263s stack positions out of 10000i,1000n,20000p,200000b,200000s
 </home/bierh/.TinyTeX/texmf-dist/fonts/type1/public/lm/lmbx10.pfb></home/bierh/.TinyTeX/texmf-dist/fonts/type1/public/lm/lmbx12.pfb></home/bierh/.TinyTeX/texmf-dist/fonts/type1/public/lm/lmex10.pfb></home/bierh/.TinyTeX/texmf-dist/fonts/type1/public/lm/lmmi10.pfb></home/bierh/.TinyTeX/texmf-dist/fonts/type1/public/lm/lmmi8.pfb></home/bierh/.TinyTeX/texmf-dist/fonts/type1/public/lm/lmr10.pfb></home/bierh/.TinyTeX/texmf-dist/fonts/type1/public/lm/lmr12.pfb></home/bierh/.TinyTeX/texmf-dist/fonts/type1/public/lm/lmr17.pfb></home/bierh/.TinyTeX/texmf-dist/fonts/type1/public/lm/lmr8.pfb></home/bierh/.TinyTeX/texmf-dist/fonts/type1/public/lm/lmri10.pfb></home/bierh/.TinyTeX/texmf-dist/fonts/type1/public/lm/lmsy10.pfb></home/bierh/.TinyTeX/texmf-dist/fonts/type1/public/lm/lmsy8.pfb></home/bierh/.TinyTeX/texmf-dist/fonts/type1/public/lm/lmtk10.pfb></home/bierh/.TinyTeX/texmf-dist/fonts/type1/public/lm/lmtt10.pfb>
-Output written on report.pdf (11 pages, 325195 bytes).
+Output written on report.pdf (12 pages, 330699 bytes).
 PDF statistics:
- 316 PDF objects out of 1000 (max. 8388607)
- 269 compressed objects within 3 object streams
- 89 named destinations out of 1000 (max. 500000)
+ 328 PDF objects out of 1000 (max. 8388607)
+ 280 compressed objects within 3 object streams
+ 95 named destinations out of 1000 (max. 500000)
  189 words of extra memory for PDF output out of 10000 (max. 10000000)
 

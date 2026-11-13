@@ -18,7 +18,6 @@
 \usepackage[hidelinks]{hyperref}
 
 \newcommand{\code}[1]{\texttt{#1}}
-\newcommand{\todo}[1]{\textcolor{red}{[TODO: #1]}}
 % one colour per configuration, used by every figure
 \definecolor{wfN}{HTML}{9E9E9E}\definecolor{wfM}{HTML}{424242}
 \definecolor{agN}{HTML}{64B5F6}\definecolor{agM}{HTML}{0D47A1}\definecolor{agO}{HTML}{E69F00}
@@ -46,7 +45,11 @@ defend, deadline). Lost arguments are distilled into lessons kept in a long-term
 Three ablations isolate the mechanisms: memory vs.\ no memory (in both systems), and opponent vs.\ no opponent.
 Each configuration is run three times in sequence so that memory can accumulate, and we report learning curves,
 per-dimension and per-kind scores, negotiation statistics and latency.
-\todo{one sentence with the headline numbers once Section~\ref{sec:results} is final.}
+On this benchmark the workflow scores 97.9/100 and the agentic organization 54.9: moving decisions from code to an
+8B model costs about 40 points, mostly in task completion, factuality and injection handling. Memory learned from
+lost arguments made the agentic system worse over trials (54.9 to 47.5, trial score 0.455 to 0.376), and made no
+measurable difference in the workflow (97.9 vs.\ 98.0). The ablations without the opponent and with RAG were not
+completed at submission time.
 \end{abstract}
 
 % ============================================================
@@ -211,7 +214,9 @@ would duplicate code; a Markdown file per agent is enough.}
 {Keyword rules on the sender address or subject (explored in a teammate's branch), a hybrid of both.}
 {Requests are free text, in French and English, and often name a person rather than an address; keyword lists must
 be maintained per language and per agent. An unknown or empty answer falls back to \code{generic}.}
-{\todo{routing distribution from Figure/\code{routing.csv}; routing quality on the teammate's routing set}.}
+{Over the 60 executions of the agentic run, the router chose teacher 21 times, administration 15, student 9,
+generic 9 and research 6. Routing accuracy against a labelled set was not measured: the benchmark scenarios carry no
+expected specialist, and the routing evaluation set of a teammate's branch was not run on this router.}
 
 \choice{Autonomous specialists (tool loop) rather than a fixed workflow.}
 {The fixed planner $\rightarrow$ writer pipeline of the first system, with recipients and injection handling
@@ -252,7 +257,8 @@ right (``the request is clear, do not ask'') and the specialist's defence still 
 {Prompt instructions only.}
 {A norm in a prompt can be ignored; a norm checked by the mediator is detected every time and sanctioned (the
 proposal is void), as in a normative MAS. The count of violations measures how often the model tries to skip work.}
-{\todo{norm violations per execution from \code{debate.csv}}.}
+{2.4 to 2.8 norm violations per execution without memory (Table~\ref{tab:debate}): the model very often proposes
+before searching or proposes empty content, and the sanction catches it every time.}
 
 \subsection{Memory and retrieval}
 \choice{Lessons learned only from lost arguments, stored per agent, five most recent recalled.}
@@ -301,7 +307,8 @@ Class & Responsibility \\
 \bottomrule
 \end{tabularx}
 \end{center}
-\todo{UML class diagram (can be generated from the table above).}
+A UML class diagram is not included in this version; the table above lists the classes and their
+responsibilities, and Figure~\ref{fig:org} shows how the agents interact.
 
 \subsection{Design patterns and why}
 \begin{description}
@@ -398,18 +405,21 @@ Same model, same judge, same seed, same mailbox data for all configurations.
 \label{sec:results}
 \begin{table}[ht]
 \centering
-\todo{fill from \code{report/data} and the run logs}
 \begin{tabular}{lrrrrr}
 \toprule
  & WF & WF+M & AG$-$O & AG & AG+M \\
 \midrule
-Composite (latency excluded) & 97.9 & 98.0 & & & \\
-Trial 1 / 2 / 3 & .992/.975/.975 & .982/.983/.992 & & & \\
-Gain & $-$.017 & +.010 & & & \\
-p95 latency (s) & 17.1 & 17.1 & & & \\
+Composite (latency excluded) & 97.9 & 98.0 & n/c & 54.9 & 47.5 \\
+Trial 1 / 2 / 3 & .992/.975/.975 & .982/.983/.992 & n/c & .465/.482/.482 & .455/.389/.376 \\
+Gain & $-$.017 & +.010 & n/c & +.017 & $-$.079 \\
+task / factuality & 1.00 / .92 & 1.00 / .97 & n/c & .33 / .15 & .23 / .08 \\
+injection & 1.00 & 1.00 & n/c & .00 & .00 \\
+reliability & 1.00 & 1.00 & n/c & 1.00 & .97 \\
+p95 latency (s) & 17.1 & 17.1 & n/c & 26.9 & 224.4 \\
 \bottomrule
 \end{tabular}
-\caption{Main results on the 20 development scenarios, 3 trials each.}
+\caption{Main results on the 20 development scenarios, 3 trials each. n/c: not completed at submission time
+(the run without the opponent was still running); its curves are absent from the figures.}
 \label{tab:main}
 \end{table}
 
@@ -487,8 +497,51 @@ Right: cost of friction and memory.}
 \label{fig:debate}
 \end{figure}
 
-\todo{Short paragraph per RQ once numbers are in: RQ1 (WF vs AG), RQ2 (AG$-$O vs AG), RQ3 (curves),
-RQ4 (AG vs AG+RAG on the hard set, and how often the agent actually chose \code{semantic\_search}).}
+\begin{table}[ht]
+\centering
+\begin{tabular}{lrrr|rrr}
+\toprule
+ & \multicolumn{3}{c|}{AG (trial 1/2/3)} & \multicolumn{3}{c}{AG+M (trial 1/2/3)} \\
+\midrule
+steps & 8.5 & 8.7 & 8.7 & 8.3 & 10.0 & 10.1 \\
+proposals & .75 & .75 & .75 & .75 & .63 & .58 \\
+attacks & .90 & .90 & .90 & .85 & .68 & .63 \\
+concessions & .20 & .15 & .15 & .20 & .05 & .05 \\
+defences & .55 & .60 & .60 & .55 & .42 & .47 \\
+deadlines reached & .30 & .25 & .25 & .25 & .16 & .21 \\
+norm violations & 2.35 & 2.75 & 2.75 & 2.40 & 3.05 & 3.37 \\
+lessons recalled & 0 & 0 & 0 & .30 & .90 & .79 \\
+\bottomrule
+\end{tabular}
+\caption{Negotiation statistics, mean per execution.}
+\label{tab:debate}
+\end{table}
+
+\paragraph{RQ1: agentic organization vs.\ workflow.} The workflow scores 97.9 and the agentic organization 54.9.
+Both write in the right tone (1.00), but the agentic system completes the task in a third of the executions and
+keeps the key facts in 15\%. The message logs show why: the specialist often fails to find the mail with keyword
+search, asks the owner a question when the request is clear, or proposes empty content. The workflow's hand-written
+control (search, selection, recipients, injection handling) is worth about 40 points with an 8B model. Autonomy does
+not replace it at this model size.
+
+\paragraph{RQ2: does friction help?} The opponent attacks 0.9 times per execution and the specialist concedes in
+only 15--20\% of executions; it mostly defends until the deadline, where the protocol commits its proposal. In
+several runs the opponent's attack was right (``the request is clear, answer it instead of asking'') and was
+overridden by the deadline rule. The run without the opponent was not completed at submission time, so the effect
+of friction on the score is not measured; the logs show that the friction finds real errors but the resolution rule
+discards them.
+
+\paragraph{RQ3: does memory help?} No. In the workflow the two arms are within noise (98.0 vs.\ 97.9). In the agentic
+system memory made results worse over trials: the mean score falls from 0.455 to 0.376, the composite from 54.9 to
+47.5, and the 95th-percentile latency rises from 27\,s to 224\,s (two executions hit the timeout). Only 4 lessons
+were learned in 60 executions, because a lesson is stored only on a concession. Once recalled, those lessons
+(``always verify and include all relevant details'', ``ask the owner when the request is unclear'') made the
+specialist longer-winded and more cautious: more steps (8.3 to 10.1), more norm violations (2.4 to 3.4) and fewer
+proposals (0.75 to 0.58). Generic lessons from a small model act as noise in the prompt.
+
+\paragraph{RQ4: does RAG over the mailbox help?} Not measured. The tool is implemented and verified on one example
+(a French query finds the right English mail), but the comparison run on the hard scenarios was queued after the
+other runs and was not completed at submission time.
 
 \subsection{Memory in the workflow}
 \label{sec:wfmem}
@@ -502,14 +555,15 @@ guards made the workflow robust to a polluted memory, but also prevented memory 
 % ============================================================
 \section{Discussion}
 \label{sec:discussion}
-\paragraph{Observed behaviours of the agentic organization} (from the message logs; \todo{add counts}):
+\paragraph{Observed behaviours of the agentic organization} (from the message logs, counts in Table~\ref{tab:debate}):
 \begin{itemize}
   \item \emph{Skipping work:} the specialist often proposes before reading any mail; the norm voids the proposal.
   \item \emph{Spurious attacks:} the opponent sometimes attacks for flaws that are not flaws (asking for a year,
         asking for a recipient of a summary). The specialist then defends and the deadline commits its proposal:
         the protocol bounds the cost of a bad opponent.
   \item \emph{Productive friction:} on an injection scenario, repeated attacks pushed the specialist from a draft
-        to a question to the owner. \todo{check whether the injection was finally warned about.}
+        to a question to the owner. The owner was never warned, however: the injection score is 0, because the specialist
+never called \code{warn\_user}.
   \item \emph{Concession to wrong arguments:} a specialist can concede to a false attack and learn a false lesson;
         friction is only as good as the opponent's reliability.
 \end{itemize}
@@ -543,22 +597,29 @@ a logged message, so the organization is auditable and its mechanisms can be mea
 \end{enumerate}
 
 \section{Conclusion}
-\todo{3--4 sentences answering RQ1--RQ3.}
+With a local 8B model, the fixed workflow (97.9) clearly outperforms the autonomous organization (54.9): hand-written
+control still does what the small model cannot do reliably. The argumentation between specialist and opponent does
+surface real errors, but a deadline rule that lets the proposer win throws many of them away, so the design of the
+resolution rule matters as much as the presence of an opponent. Long-term memory built from lost arguments did not
+help in either system, and in the agentic one it hurt. The open questions are the ablation without the opponent,
+the RAG comparison, and an opponent that wins at the deadline or whose influence is weighted by its reputation.
 
 % ============================================================
 \section*{Contributions of group members}
 \begin{center}
-\begin{tabularx}{\linewidth}{llX}
+\begin{tabularx}{\linewidth}{lX}
 \toprule
-Name & Student number & Contributions \\
+Name & Contributions \\
 \midrule
-Kyllian Pham & \todo{} & Agentic system: router, specialist agents, opponent, coordinator and negotiation protocol \\
-Jade Frelat & \todo{} & Benchmark: scenarios, answer keys, scoring and evaluation protocol \\
-Valentin Vincent & \todo{} & RAG: design and implementation of retrieval \\
-Bierhoff Theolien & \todo{} & Workflow system: planner, writer, summarizer, critic and memory \\
+Kyllian Pham & Agentic system: router, specialist agents, opponent, coordinator and negotiation protocol \\
+Jade Frelat & Benchmark: scenarios, answer keys, scoring and evaluation protocol \\
+Valentin Vincent & RAG: design and implementation of retrieval \\
+Bierhoff Theolien & Workflow system: planner, writer, summarizer, critic and memory \\
 \bottomrule
 \end{tabularx}
 \end{center}
+
+Student numbers are not included in this version.
 
 \section*{Reproducibility}
 \begin{verbatim}

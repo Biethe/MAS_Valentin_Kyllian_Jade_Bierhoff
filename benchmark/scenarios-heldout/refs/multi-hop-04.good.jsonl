@@ -1,0 +1,8 @@
+{"layer": "route", "actor": "planner", "kind": "llm", "name": "atomic_instructions", "input": {"request": "Réponds à la scolarité en leur donnant le numéro de dossier qu'ils m'ont attribué."}, "output": {"instructions": [{"type": "REPLY", "clear": true, "body": "Réponds à la scolarité en leur donnant le numéro de dossier qu'ils m'ont attribué."}]}}
+{"layer": "tool", "actor": "workflow", "kind": "tool", "name": "search_mail", "input": {"query": "numéro de dossier"}}
+{"layer": "tool", "actor": "workflow", "kind": "tool", "name": "read_mail", "input": {"id": "m3"}}
+{"layer": "tool", "actor": "workflow", "kind": "tool", "name": "search_mail", "input": {"query": "vacataire"}}
+{"layer": "tool", "actor": "workflow", "kind": "tool", "name": "read_mail", "input": {"id": "m2"}}
+{"layer": "facts", "actor": "planner", "kind": "llm", "name": "atomic_information", "input": {}, "output": {"items": [{"kind": "INFORMATIVE", "text": "Numéro de dossier de vacataire : VAC-2026-0387.", "sourceMailId": "m2"}]}}
+{"layer": "tool", "actor": "workflow", "kind": "tool", "name": "create_draft", "input": {"to": ["scolarite@univ-valmont.example"], "cc": [], "bcc": [], "subject": "Re: Heures d'enseignement à déclarer", "body": "Bonjour,\n\nMon numéro de dossier de vacataire est VAC-2026-0387.\n\nCordialement,\nKarim Benali", "inReplyTo": "m3"}}
+{"layer": "output", "actor": "assistant", "kind": "llm", "name": "answer", "input": {}, "output": {"draft": {"to": ["scolarite@univ-valmont.example"], "cc": [], "bcc": [], "subject": "Re: Heures d'enseignement à déclarer", "body": "Bonjour,\n\nMon numéro de dossier de vacataire est VAC-2026-0387.\n\nCordialement,\nKarim Benali", "inReplyTo": "m3"}}}
