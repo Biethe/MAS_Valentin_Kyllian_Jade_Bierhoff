@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import AgentsPanel from "./AgentsPanel";
 
 const asset = (name: string) => `/assets/${name}`;
 
@@ -56,6 +57,8 @@ type Answer = {
   chats?: string[];
   draft?: DraftView;
   rules?: Rule[];
+  agent?: string;
+  context?: string[];
   error?: string;
 };
 
@@ -68,6 +71,23 @@ const emptyDraft: DraftView = { to: "", cc: "", bcc: "", subject: "", body: "", 
 function Reply({ answer }: { answer: Answer }) {
   return (
     <>
+      {answer.agent && (
+        <div className="agent-badge">
+          <span>
+            Routed to <strong>{answer.agent}</strong> · experimental
+          </span>
+          {!!answer.context?.length && (
+            <details>
+              <summary>Context used ({answer.context.length})</summary>
+              <ul>
+                {answer.context.map((passage, index) => (
+                  <li key={index}>{passage}</li>
+                ))}
+              </ul>
+            </details>
+          )}
+        </div>
+      )}
       {answer.summary && (
         <div className="message-bubble system-message summary-request">{answer.summary}</div>
       )}
@@ -141,6 +161,8 @@ export default function App() {
   const embed = new URLSearchParams(window.location.search).has("embed");
   const [mode, setMode] = useState<"button" | "panel" | "full">(embed ? "panel" : "button");
   const [busy, setBusy] = useState(false);
+  const [agentMode, setAgentMode] = useState(false); // experimental: router + specialists instead of the workflow
+  const [agentsOpen, setAgentsOpen] = useState(false);
   const [steps, setSteps] = useState<string[]>([]);
   const [showSteps, setShowSteps] = useState(true);
   const [turns, setTurns] = useState<TurnView[]>([]);
@@ -215,7 +237,7 @@ export default function App() {
     setBusy(true);
     setNotice("Working on the mailbox…");
     try {
-      const response = await fetch("/api/turn", {
+      const response = await fetch(agentMode ? "/api/agentic/turn" : "/api/turn", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -316,6 +338,15 @@ export default function App() {
         <div className="float-bar">
           <span>{status.mailbox}</span>
           <button type="button" onClick={reset}>New</button>
+          <button
+            type="button"
+            onClick={() => setAgentMode(!agentMode)}
+            aria-pressed={agentMode}
+            title="Workflow: planner and writer. Agents: router, specialists and an opponent (experimental)."
+          >
+            {agentMode ? "Mode: Agents" : "Mode: Workflow"}
+          </button>
+          <button type="button" onClick={() => setAgentsOpen(true)}>Edit agents</button>
           <button type="button" onClick={() => setView(mode === "full" ? "panel" : "full")}>
             {mode === "full" ? "Float" : "Full screen"}
           </button>
@@ -367,7 +398,7 @@ export default function App() {
               <input
                 value={message}
                 onChange={(event) => setMessage(event.target.value)}
-                placeholder="Ask about this mailbox…"
+                placeholder={agentMode ? "Ask the agents about this mailbox…" : "Ask about this mailbox…"}
                 aria-label="Ask about this mailbox"
                 disabled={busy}
               />
@@ -489,6 +520,7 @@ export default function App() {
         </section>
       </div>
       )}
+      {agentsOpen && <AgentsPanel onClose={() => setAgentsOpen(false)} />}
     </main>
   );
 }

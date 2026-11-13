@@ -12,6 +12,8 @@ find com -name '*.java' \
   > ui/agent-classes/sources.txt
 javac --release 21 -encoding UTF-8 -cp "benchmark/target/classes:benchmark/target/lib/*" \
   -d ui/agent-classes @ui/agent-classes/sources.txt || exit 1
+# per-specialist documents for the Agents mode (edited from the chat page)
+export CONTEXT_DIR="${CONTEXT_DIR:-$PWD/context}"
 export MAIL_MCP="${MAIL_MCP:-university}"
 export SCENARIO="${SCENARIO:-benchmark/scenarios/reply-prof-01.json}"
 if [ "$MAIL_MCP" = "university" ]; then

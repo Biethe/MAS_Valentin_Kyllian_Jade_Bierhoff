@@ -56,12 +56,13 @@ public final class UiServer {
         server.createContext("/api/memory", UiServer::memory);
         server.createContext("/api/veto", UiServer::veto);
         server.createContext("/api/turn", UiServer::turn);
+        com.assistant.mail.agentic.AgenticUi.register(server); // "Agents" mode: /api/agents, /api/agentic/turn
         server.setExecutor(Executors.newFixedThreadPool(4));
         server.start();
         System.out.println("UI agent on http://127.0.0.1:" + PORT + " mailbox=" + mailbox());
     }
 
-    static String payload(Turn.Outcome outcome, LongTermMemory memory, int known) {
+    public static String payload(Turn.Outcome outcome, LongTermMemory memory, int known) {
         Turn.Outcome turn = outcome == null ? new Turn.Outcome() : outcome;
         ObjectNode root = JSON.createObjectNode();
         root.put("text", TraceFile.text(turn));
