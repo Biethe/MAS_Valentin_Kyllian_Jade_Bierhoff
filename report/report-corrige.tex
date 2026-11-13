@@ -61,11 +61,22 @@ On this benchmark the workflow scores 97.9/100 and the agentic organization 54.9
 lost arguments made the agentic system worse over trials (54.9 to 47.5, trial score 0.455 to 0.376), and made no
 measurable difference in the workflow (97.9 vs.\ 98.0). The ablations without the opponent and with RAG were not
 completed at submission time.
-This revision adds measurements of routing quality, per-agent documents, an editor for agents in the chat page, and UML, sequence and module diagrams (Sections~\ref{sec:routing}, \ref{sec:ui}).
 \end{abstract}
 
 % ============================================================
 \section{Problem studied}
+\paragraph{What is a multi-agent system?}
+A multi-agent system (MAS) is a set of \emph{agents} that act in a shared environment to solve a problem that none of
+them handles well alone. An agent is an autonomous entity with its own goal, its own knowledge and its own actions:
+it perceives its environment, decides and acts. What turns a set of agents into a system is its \emph{organization}:
+the roles they play, the messages they exchange (an interaction protocol), the rules they must respect (norms) and the
+way conflicts are settled (negotiation, argumentation, voting). A MAS is therefore different from a program that calls
+a language model once: the intelligence is spread over specialized agents whose cooperation, or confrontation, is
+designed, observable and measurable. Here the agents are language-model agents and the environment is a mailbox.
+This report answers the course assignment, called \emph{the project statement} below: design a framework in which
+such an organization drafts replies to e-mails with local language models.
+
+\paragraph{The problem.}
 University staff receive many kinds of mail (students, colleagues, administration, research partners), and a good
 answer depends on the sender's role, the thread history and the owner's own context. Personal and unpublished data
 should not leave the owner's machine, so we use only local models, which are much weaker than hosted ones.
@@ -102,27 +113,37 @@ corrupting the information environment, exactly the attack pattern studied in th
 \section{Multi-agent organization}
 \begin{figure}[ht]
 \centering
-\resizebox{\linewidth}{!}{\begin{tikzpicture}[node distance=9mm and 14mm, every node/.style={font=\small},
-  ag/.style={draw, rounded corners, fill=blue!6, minimum width=26mm, minimum height=8mm, align=center},
-  env/.style={draw, fill=gray!10, minimum width=26mm, minimum height=8mm, align=center},
+\resizebox{\linewidth}{!}{\begin{tikzpicture}[
+  ag/.style={draw, rounded corners, fill=blue!6, minimum width=32mm, minimum height=10mm, align=center, font=\small},
+  env/.style={draw, fill=gray!10, minimum width=32mm, minimum height=10mm, align=center, font=\small},
+  doc/.style={draw, rounded corners, fill=green!8, minimum width=32mm, minimum height=10mm, align=center, font=\small},
+  lab/.style={font=\scriptsize, fill=white, inner sep=1pt},
   ->, >={Stealth[length=2mm]}]
-  \node[ag] (owner) {Owner};
-  \node[ag, right=of owner] (coord) {Coordinator\\(mediator)};
-  \node[ag, above right=4mm and 14mm of coord] (router) {Router};
-  \node[ag, right=of coord] (spec) {Specialist\\{\scriptsize student / teacher / admin / research / generic}};
-  \node[ag, below=12mm of coord, fill=orange!12] (opp) {Opponent};
-  \node[env, right=of spec] (mail) {Mailbox (MCP)\\{\scriptsize search, read, thread, draft}};
-  \node[env, below=12mm of spec] (mem) {Memory\\{\scriptsize lessons per agent}};
-  \draw (owner) -- node[above]{\scriptsize REQUEST} (coord);
-  \draw (coord) -- node[above left]{\scriptsize route?} (router);
-  \draw (coord) -- node[above]{\scriptsize ROUTE} (spec);
-  \draw[<->] (spec) -- node[above]{\scriptsize tools} (mail);
-  \draw[<->] (coord) -- node[left, align=right]{\scriptsize PROPOSE\\[-2pt]\scriptsize ATTACK / ACCEPT} (opp);
-  \draw[<->] (spec) -- node[right]{\scriptsize recall / learn} (mem);
-  \draw[bend right=35] (coord) to node[above]{\scriptsize COMMIT} (owner);
+  \node[env] (owner) at (0,0) {Owner\\{\scriptsize chat page}};
+  \node[ag, fill=orange!12] (coord) at (5.6,0) {Coordinator\\{\scriptsize mediator, norms}};
+  \node[ag] (router) at (5.6,3.6) {Router};
+  \node[ag] (spec) at (11.6,0) {Specialist\\{\scriptsize student, teacher, administration,}\\{\scriptsize research, generic}};
+  \node[doc] (docs) at (11.6,3.6) {Documents of the agent\\{\scriptsize and contact cards}};
+  \node[ag] (opp) at (5.6,-3.6) {Opponent};
+  \node[env] (mem) at (0,-3.6) {Memory\\{\scriptsize lessons per agent}};
+  \node[env] (mail) at (17.2,0) {Mailbox (MCP)\\{\scriptsize search, read, thread,}\\{\scriptsize draft, contacts}};
+  \node[doc] (files) at (17.2,-3.6) {Agent files\\{\scriptsize specialists/*.md}};
+  \node[draw, dashed, inner sep=7mm, fit=(router)(coord)(spec)(opp)(docs),
+        label={[anchor=north west, font=\scriptsize]north west:calls the local LLM (interface Llm)}] {};
+  \draw (owner) -- node[lab]{REQUEST} (coord);
+  \draw[bend left=28] (coord) to node[lab]{COMMIT} (owner);
+  \draw[<->] (coord) -- node[lab]{which agent?} (router);
+  \draw (coord) -- node[lab]{ROUTE} (spec);
+  \draw[bend left=28] (spec) to node[lab]{PROPOSE} (coord);
+  \draw[<->] (spec) -- node[lab]{tools} (mail);
+  \draw[<->] (coord) -- node[lab, right]{PROPOSE, ATTACK / ACCEPT} (opp);
+  \draw[<->] (coord) -- node[lab, pos=0.62, above left]{recall / learn} (mem);
+  \draw (docs) -- node[lab]{3 passages} (spec);
+  \draw (files) -- node[lab, pos=0.35]{prompt, description} (spec);
 \end{tikzpicture}}
 \caption{Agentic organization. Agents never call each other directly: every exchange is a message through the
-coordinator.}
+coordinator. The dashed frame holds the components that call the local model through the \code{Llm} interface; the agent
+files and the documents are plain files that the owner edits by hand or from the chat page.}
 \label{fig:org}
 \end{figure}
 
@@ -157,30 +178,75 @@ When the specialist concedes, the opponent's generalized lesson (``one rule that
 stored in that specialist's long-term memory. The five most recent lessons are added to its system prompt the next
 time it is chosen. A lesson is therefore only learned from a lost argument: the friction is the learning signal.
 
-\paragraph{Retrieval (RAG) over the mailbox only.}
-In a webmail the knowledge the assistant needs is the mailbox itself: the thread, earlier exchanges with the same
-person, the dates. We therefore retrieve from mails only, not from separate document folders. With RAG on, the
-specialist gets one more tool, \code{semantic\_search}: the mailbox is listed once (subject, sender and a short
-snippet per mail, so no mail is opened), each entry is embedded with \code{all-minilm:22m}, and the query is matched
-by cosine similarity (word overlap if no embedding model is installed). It complements keyword search, which only
-finds mails containing the exact words: ``séminaire'' does not match ``seminar''. A per-specialist index (research
-mail for the research agent) would also give each agent its own context, as the brief asks; we index the whole
-mailbox here.
+\paragraph{Retrieval (RAG) in our system.}
+Retrieval-augmented generation (RAG) means that, instead of giving the model everything it might need, we search a
+collection of texts for the few passages closest to the request and add only those to the prompt. The model stays small,
+the prompt stays short, and the knowledge changes by editing files. Our system uses the same mechanism in two places
+(Figure~\ref{fig:rag}):
+\begin{enumerate}
+  \item \emph{Documents of each agent.} Each specialist has its own folder, \code{context/<name>/*.txt|md}, next to the
+        one-section private context of its Markdown file. The files are cut into passages of about 600 characters. For a
+        request, the three passages closest to it are added to the prompt of the chosen specialist \emph{only}, so the
+        student agent never receives the teacher's documents. The feature is off unless \code{CONTEXT\allowbreak\_DIR}
+        is set, so the benchmark results of this report do not depend on it. It was checked end to end on one scenario
+        (routed to \code{teacher}, one passage given to it); its effect on quality is \emph{not} measured, since no
+        benchmark scenario depends on these documents.
+  \item \emph{Mailbox search by meaning} (tool \code{semantic\_search}, with \code{RAG=1}). In a webmail much of the
+        knowledge is the mailbox itself: the thread, earlier exchanges, dates. The mailbox is listed once (subject,
+        sender and a short snippet per mail, so no mail is opened), each entry is embedded, and the five closest mails
+        are returned to the agent. It complements keyword search, which only finds the exact words: ``séminaire'' does
+        not match ``seminar''.
+\end{enumerate}
+Closeness is the cosine similarity between embeddings produced locally by \code{all-minilm:22m} (22 million
+parameters, served by Ollama); without an embedding model, the number of shared words replaces it.
 
-\paragraph{Per-agent documents and contact cards.}
-The brief asks that each specialist have a context of its own. Besides the one-section private context of its Markdown
-file, a specialist can now have a folder of documents, \code{context/<name>/*.txt|md}, cut into passages of about 600
-characters. For each request, the three passages closest to it are added to the prompt of the chosen specialist
-\emph{only}, so the student agent never receives the teacher's documents. Closeness is the cosine similarity of
-\code{all-minilm:22m} embeddings (\code{Llm.embed}) or, without an embedding model, the number of shared words.
-\code{recipients.json} holds contact cards (name, role, organization, notes) that \code{lookup\_contact} consults when
-the benchmark's directory does not know a person. The feature is off unless \code{CONTEXT\allowbreak\_DIR} is set, so the benchmark
-results of this report do not depend on it. It was checked end to end on one scenario (routed to \code{teacher}, one
-passage given to it); its effect on quality is \emph{not} measured, since no benchmark scenario depends on these documents.
+\begin{figure}[ht]
+\centering
+\resizebox{\linewidth}{!}{\begin{tikzpicture}[
+  st/.style={draw, rounded corners, fill=blue!6, minimum width=32mm, minimum height=11mm, align=center, font=\small},
+  res/.style={draw, rounded corners, fill=green!10, minimum width=32mm, minimum height=11mm, align=center, font=\small},
+  mod/.style={draw, rounded corners, fill=orange!12, minimum width=32mm, minimum height=11mm, align=center, font=\small},
+  head/.style={font=\small\bfseries, anchor=west},
+  lab/.style={font=\scriptsize, fill=white, inner sep=1pt},
+  ->, >={Stealth[length=2mm]}]
+  \node[head] at (-1.7,3.5) {Indexing: when the agent is first used};
+  \node[st] (docs) at (0,2.4) {Files of the agent\\{\scriptsize context/<name>/*.txt|md}};
+  \node[st] (chunks) at (4.4,2.4) {Passages\\{\scriptsize about 600 characters}};
+  \node[mod] (emb1) at (8.8,2.4) {Embedding model\\{\scriptsize all-minilm:22m}};
+  \node[st] (index) at (13.2,2.4) {Vectors in memory\\{\scriptsize one index per agent}};
+  \draw (docs) -- (chunks); \draw (chunks) -- (emb1); \draw (emb1) -- (index);
+  \node[head] at (-1.7,1.1) {Each request};
+  \node[st] (req) at (0,0) {Request of the owner};
+  \node[mod] (emb2) at (4.4,0) {Same embedding model\\{\scriptsize vector of the request}};
+  \node[st] (sim) at (8.8,0) {Cosine similarity\\{\scriptsize with every passage}};
+  \node[res] (top) at (13.2,0) {3 closest passages};
+  \draw (req) -- (emb2); \draw (emb2) -- (sim); \draw (sim) -- (top);
+  \draw (index) -- node[lab, pos=0.45]{search} (sim);
+  \node[res] (prompt) at (13.2,-2.4) {Prompt of the chosen\\specialist only};
+  \draw (top) -- node[lab]{added} (prompt);
+  \node[draw, dashed, align=left, font=\scriptsize, minimum width=88mm] at (3.7,-2.4)
+    {Without embedding model: shared words replace the similarity.\\
+     Mailbox variant (\texttt{semantic\_search}): the list of mails replaces the files,\\
+     and the 5 closest mails are returned to the agent as a tool result.};
+\end{tikzpicture}}
+\caption{Retrieval in our system. Top: the files of one agent are cut into passages and embedded. Bottom: for each
+request, the three closest passages join the prompt of the chosen specialist and of no other. The chat page rebuilds the
+index for every request, so an edited file applies at once.}
+\label{fig:rag}
+\end{figure}
+
+\paragraph{Knowledge about people.}
+Specialists also know the people they write to. A contact card (\code{context/recipients.json}) holds a person's name,
+role, organization and free notes, for instance ``prefers formal French''. When a specialist calls
+\code{lookup\_contact} for a name, it receives the address and the card, and writes accordingly; the benchmark's
+directory is consulted first, the cards when it knows nobody of that name. The cards are read-only for the agents: the
+owner writes them, nothing is learned from the replies the owner validates. The earlier module \code{email-multiagent}
+goes further (its \code{RecipientKnowledgeBase} injects the card into every prompt and records each validated reply
+into it); the agentic system does not do either yet (see the limits).
 
 \paragraph{Related module: category router and mail integration.}
 The repository also contains \code{email-multiagent}, an earlier and separate implementation of the minimal scenario of
-the brief: a security agent, a router with interchangeable strategies (keyword, LLM, hybrid, feedback-weighted) over seven
+the project statement: a security agent, a router with interchangeable strategies (keyword, LLM, hybrid, feedback-weighted) over seven
 categories, five specialized agents with Markdown prompts and per-category documents (retrieval with local embeddings),
 IMAP and SMTP adapters, an audit log and a web page. It is not part of the benchmark and the agentic system above does not
 use it; Section~\ref{sec:routing} reports its routing measurements because they fill a gap of the main study.
@@ -193,14 +259,14 @@ lessons go to a memory (Section~\ref{sec:wfmem}).
 
 % ============================================================
 \section{Architecture and main design choices}
-Each choice below states the alternatives we considered, why we chose, and the evidence: a measurement on our
-benchmark, a failure we observed, or a requirement of the project brief.
-\newcommand{\choice}[4]{\paragraph{#1}\emph{Alternatives:} #2\\ \emph{Why:} #3\\ \emph{Evidence:} #4}
+Each choice below states why we chose it, the evidence, and the alternatives we considered: a measurement on our
+benchmark, a failure we observed, or a requirement of the project statement.
+\newcommand{\choice}[4]{\paragraph{#1}\emph{Why:} #3\\ \emph{Evidence:} #4\\ \emph{Alternatives:} #2}
 
 \subsection{Infrastructure}
 \choice{Local inference through Ollama.}
 {llama.cpp server, vLLM, a hosted API.}
-{The brief requires local models and an architecture not tied to one model. Ollama serves any model by name behind
+{The project statement requires local models and an architecture not tied to one model. Ollama serves any model by name behind
 one chat API with native tool calling and embeddings; changing model is one environment variable
 (\code{AGENT\_MODEL}). vLLM targets larger GPUs; a hosted API sends mail out of the machine.}
 {The same code ran with \code{qwen3.5:2b/4b}, \code{llama3.2} and \code{llama3.1:8b} without change.}
@@ -222,20 +288,20 @@ seconds.}
 \choice{Mailbox behind MCP, with no send tool.}
 {Direct IMAP or Gmail/Graph API calls inside the agents.}
 {One protocol covers Gmail, Outlook and the benchmark's fictional mailbox, so the agents are unchanged between
-real use and evaluation. Having no send tool makes ``propose, never send'' (brief \S11) a property of the
+real use and evaluation. Having no send tool makes ``propose, never send'' (project statement, Section~11) a property of the
 environment, not a promise of the prompt. The mailbox server logs every call, which the benchmark scores.}
 {The same agent code runs against the three mailboxes; an injected ``send this to\ldots'' cannot be executed.}
 
 \choice{Java 21 without an agent framework.}
 {LangChain4j or a Python agent framework.}
-{Java is required by the brief. A framework hides the agent loop and the message flow, and these are exactly what we
+{Java is required by the project statement. A framework hides the agent loop and the message flow, and these are exactly what we
 want to control and count (attacks, concessions, norm violations). The whole agentic layer is nine classes.}
 {Every message of every run is logged and turned into the negotiation statistics of Figure~\ref{fig:debate}.}
 
 \subsection{Organization}
 \choice{Router plus specialists, with specialists as data files.}
 {One general agent with one prompt; specialist classes in Java (one subclass per category).}
-{The brief asks for specialized prompts and contexts, editable without changing code, and for adding agents
+{The project statement asks for specialized prompts and contexts, editable without changing code, and for adding agents
 easily. All specialists share the same behaviour and differ only by prompt and context, so a subclass per agent
 would duplicate code; a Markdown file per agent is enough.}
 {Adding \code{specialists/<name>.md} adds an agent; the router reads its description line.}
@@ -298,13 +364,15 @@ instead of transcripts keep the prompt small: instruction-following drops as the
 Per-agent memory keeps an administration lesson out of the student agent's prompt.}
 {In the first system, learning from every critique produced 69 lessons in 60 executions, many generic or wrong.}
 
-\choice{RAG over the mailbox only, from snippets, with a small embedding model.}
-{RAG over document folders per profile; embedding full mails; no RAG.}
-{In a webmail the knowledge needed is the mailbox itself. Indexing subject, sender and snippet comes from one listing
-call and opens no mail, so no mail is marked as read just to be indexed. \code{all-minilm:22m} (45\,MB) fits in
-VRAM next to the 8B model; word overlap is the fallback when no embedding model is installed.}
-{A French query ranks the English ``Thesis submission calendar'' mail first out of 16; RQ4 measures the effect on
-the hard scenarios.}
+\choice{Retrieval from per-agent documents and from the mailbox, with a small embedding model.}
+{A single shared document collection; embedding full mails; no retrieval.}
+{The mailbox holds the thread and the dates, but not the rules, procedures and project facts a specialist needs: those
+go in a folder per agent, which is also how each agent gets a context of its own. Mailbox indexing uses subject, sender
+and snippet from one listing call and opens no mail, so no mail is marked as read just to be indexed.
+\code{all-minilm:22m} (45\,MB) fits in VRAM next to the 8B model; word overlap is the fallback without it.}
+{A French query ranks the English ``Thesis submission calendar'' mail first out of 16; passages of an agent's folder
+were verified to reach only that agent. RQ4 measures the effect of mailbox retrieval on the hard scenarios; the effect
+of the documents on quality is not measured.}
 
 \subsection{Evaluation}
 \choice{A black-box benchmark built before the agents, scored on outcomes.}
@@ -317,7 +385,7 @@ from the mailbox server's own log means a system cannot claim actions it did not
 {Keeping latency as a scored dimension.}
 {Memory, debate and retrieval are slower by design; scoring latency would mix cost with quality. We report latency
 separately (Figure~\ref{fig:debate}).}
-{}
+{Table~\ref{tab:main} and Figure~\ref{fig:debate}: the 95th-percentile latency is 17.1\,s for the workflow and 26.9 to 224.4\,s for the agentic runs.}
 
 \subsection{Important classes and interfaces}
 \begin{center}
@@ -449,7 +517,7 @@ pre-loaded but fetched on demand by the agent, which limits what reaches the mod
 \textbf{Threads}: \code{read\_thread} returns the whole thread oldest first; the prompts and the opponent both state
 that a later mail overrides earlier dates and places.
 
-\subsection{Answers to the design questions of the brief}
+\subsection{Answers to the design questions of the project statement}
 \begin{enumerate}
   \item \emph{What is an agent?} An entity with its own goal, its own prompt and context, a set of actions (tools or
         messages), and autonomy over the order of its actions. In the code, a specialist is a data record
@@ -482,7 +550,7 @@ that a later mail overrides earlier dates and places.
 % ============================================================
 \section{User interface}
 \label{sec:ui}
-The chat page (\code{ui/}, React) talks to a small local server (\code{UiServer}, port 8787, localhost only). It now has
+The chat page (\code{ui/}, React) talks to a small local server (\code{UiServer}, port 8787, localhost only). It has
 two modes, chosen with a button in its top bar:
 \begin{itemize}
   \item \textbf{Workflow} (default, unchanged): the planner and writer pipeline of the first system.
@@ -501,7 +569,7 @@ which was routed to the \code{teacher} agent with one passage of context.
 \centering
 \begin{tabular}{@{}p{0.34\linewidth}p{0.6\linewidth}@{}}
 \toprule
-Wish of the brief (Section~10) & State \\
+Wish of the project statement (Section~10) & State \\
 \midrule
 View the existing agents & done (agents panel) \\
 Create a new specialized agent & done \\
@@ -514,7 +582,7 @@ Accept, modify or reject the response & \textbf{not done}: the draft is saved to
 the page does not edit or reject it (it can veto a learned lesson) \\
 \bottomrule
 \end{tabular}
-\caption{The interface against the wishes of the brief.}
+\caption{The interface against the wishes of the project statement.}
 \label{tab:ui}
 \end{table}
 
@@ -788,16 +856,16 @@ a logged message, so the organization is auditable and its mechanisms can be mea
         Transfer to unseen scenarios (the hard and held-out sets) is not yet measured.
   \item \textbf{Lessons are not validated.} A lesson is kept whenever the specialist concedes, whether or not the
         attack was right.
-  \item \textbf{Contacts} come from the benchmark's directory file or, when the context folder is enabled, from
-        \code{recipients.json}.
+  \item \textbf{Knowledge about people} is read-only: contact cards are written by the owner and returned by
+        \code{lookup\_contact}; they are not injected automatically into the prompt and not updated from the owner's decisions.
   \item \textbf{Interface.} The chat page edits agents, prompts and documents, but it does not show the inbox and does
         not accept, edit or reject a draft (Table~\ref{tab:ui}).
   \item \textbf{Per-agent documents} are verified to reach the chosen agent, but their effect on quality is not measured.
   \item \textbf{Routing measurements} use a small model, 15 and 12 labelled mails, one pass, and labels written by us.
   \item \textbf{Two systems.} The category router of \code{email-multiagent} and the agentic organization are not merged:
         the latter does not use the former's security agent or its feedback-weighted strategy.
-  \item \textbf{Ablations.} The runs without the opponent and with RAG over the mailbox still need the 8B model and were
-        not repeated for this revision.
+  \item \textbf{Ablations.} The runs without the opponent and with RAG over the mailbox need the 8B model and were
+        not completed.
 \end{itemize}
 
 \section{Possible improvements}
@@ -810,6 +878,9 @@ a logged message, so the organization is auditable and its mechanisms can be mea
   \item \textbf{Voting router} (course: voting systems): several routers vote; ties go to \code{generic} or to a
         question to the owner.
   \item Run the hard and held-out sets with frozen memory to test transfer.
+  \item \textbf{Knowledge about people:} inject the card of the person concerned into the prompt automatically, let the owner
+        edit the cards in the chat page, and update a card from the replies the owner validates (as \code{RecipientKnowledgeBase}
+        does in \code{email-multiagent}).
 \end{enumerate}
 
 \section{Conclusion}
@@ -835,9 +906,8 @@ Bierhoff Theolien & \todo{student number} & Workflow system: planner, writer, su
 \end{tabularx}
 \end{center}
 
-This revision adds the routing measurements, the per-agent documents and contact cards, the agents editor of the chat
-page, the diagrams, and the module \code{email-multiagent} with its evaluation sets.
-\todo{the group states who wrote each of these parts}
+The routing evaluation, the per-agent documents and contact cards, the agents editor of the chat page, the diagrams and
+the module \code{email-multiagent} with its evaluation sets were written by \todo{names}.
 
 \section*{Reproducibility}
 \begin{verbatim}
@@ -854,7 +924,7 @@ python3 ../report/extract.py wfNomem=<run> wfMem=<run> \
 Every run keeps its traces and, for the agentic system, \code{<trace>.agentic.json} with the route, the
 negotiation counts and every message.
 
-\paragraph{Added in this revision.}
+\paragraph{Routing evaluation and chat page.}
 \begin{verbatim}
 # routing: category routers (keyword, LLM, hybrid), then the agentic router
 cd email-multiagent
