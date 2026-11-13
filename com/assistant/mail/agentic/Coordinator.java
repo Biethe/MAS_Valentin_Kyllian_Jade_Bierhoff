@@ -48,6 +48,8 @@ public final class Coordinator {
     final List<Message> log = new ArrayList<>();
     final Map<String, Integer> stats = new LinkedHashMap<>();
     String routed = "";
+    private final ProfileContext profile; // null unless CONTEXT_DIR is set
+    List<String> contextUsed = List.of(); // passages given to the specialist of the last request
 
     public Coordinator(Llm llm, Router router, Opponent opponent, Memory memory, List<Specialist> specialists) {
         this.llm = llm;
@@ -55,6 +57,7 @@ public final class Coordinator {
         this.opponent = opponent;
         this.memory = memory;
         this.specialists = specialists;
+        this.profile = ProfileContext.fromEnv(llm);
     }
 
     public Turn.Outcome handle(String request, String owner, MailboxClient mail, MailTools tools) {
@@ -69,6 +72,12 @@ public final class Coordinator {
         if (tools.rag()) system.append("- When keyword search finds nothing useful, or the mail may be in another language, "
                 + "call semantic_search with a short description of the mail you need.\n");
         if (!sp.context().isBlank()) system.append("\nYour context:\n").append(sp.context()).append('\n');
+        contextUsed = profile == null ? List.of() : profile.passages(sp.name(), request, 3);
+        count("contextPassages", contextUsed.size());
+        if (!contextUsed.isEmpty()) {
+            system.append("\nRelevant documents of your profile (background, not mail):\n");
+            for (String passage : contextUsed) system.append("- ").append(passage.replace('\n', ' ')).append('\n');
+        }
         if (!lessons.isEmpty()) {
             system.append("\nLessons from your past mistakes:\n");
             for (String l : lessons) system.append("- ").append(l).append('\n');

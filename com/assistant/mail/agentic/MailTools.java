@@ -134,6 +134,11 @@ final class MailTools {
                             && s.indexOf(p.path("email").asString()) < 0)
                         s.append(p.path("name").asString()).append(" <").append(p.path("email").asString()).append("> role: ")
                                 .append(p.path("role").asString()).append('\n');
+        if (s.isEmpty()) { // not in the directory: try the owner's contact cards (CONTEXT_DIR/recipients.json)
+            ProfileContext cards = ProfileContext.fromEnv(null);
+            String card = cards == null ? null : cards.contact(name);
+            if (card != null) return card;
+        }
         return s.isEmpty() ? "no contact named " + name : s.toString();
     }
 
