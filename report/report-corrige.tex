@@ -8,20 +8,31 @@
 \usepackage{graphicx}
 \usepackage{xcolor}
 \usepackage{amsmath}
+\newif\ifhaspgf
+\IfFileExists{pgfplots.sty}{\haspgftrue}{\haspgffalse}
+\ifhaspgf
 \usepackage{pgfplots}
 \usepackage{pgfplotstable}
+\fi
 \usepackage{tikz}
-\usetikzlibrary{arrows.meta,positioning,shapes.geometric}
+\usepackage{longtable}
+\usetikzlibrary{arrows.meta,positioning,shapes.geometric,fit,calc}
+\ifhaspgf
 \pgfplotsset{compat=1.18}
 \pgfplotsset{discard if not/.style 2 args={unbounded coords=discard, x filter/.append code={%
   \edef\tempa{\thisrow{#1}}\edef\tempb{#2}\ifx\tempa\tempb\else\def\pgfmathresult{inf}\fi}}}
+\fi
 \usepackage[hidelinks]{hyperref}
 
 \newcommand{\code}[1]{\texttt{#1}}
 % one colour per configuration, used by every figure
 \definecolor{wfN}{HTML}{9E9E9E}\definecolor{wfM}{HTML}{424242}
 \definecolor{agN}{HTML}{64B5F6}\definecolor{agM}{HTML}{0D47A1}\definecolor{agO}{HTML}{E69F00}
+\ifhaspgf
 \pgfplotsset{every axis/.append style={grid=major, grid style={gray!20}, tick label style={font=\small}, label style={font=\small}, legend style={font=\small}}}
+\fi
+\newcommand{\todo}[1]{{\color{red}[#1]}}
+\newcommand{\missingplot}{\fbox{\parbox{0.9\linewidth}{\centering\small This plot needs the \texttt{pgfplots} package, which was not installed when this PDF was built. See the original \texttt{report.pdf}.}}}
 
 \title{Friction as a Design Principle:\\
 An Argumentative Multi-Agent Organization for Local-LLM Email Assistance,\\
@@ -50,6 +61,7 @@ On this benchmark the workflow scores 97.9/100 and the agentic organization 54.9
 lost arguments made the agentic system worse over trials (54.9 to 47.5, trial score 0.455 to 0.376), and made no
 measurable difference in the workflow (97.9 vs.\ 98.0). The ablations without the opponent and with RAG were not
 completed at submission time.
+This revision adds measurements of routing quality, per-agent documents, an editor for agents in the chat page, and UML, sequence and module diagrams (Sections~\ref{sec:routing}, \ref{sec:ui}).
 \end{abstract}
 
 % ============================================================
@@ -155,6 +167,24 @@ finds mails containing the exact words: ``séminaire'' does not match ``seminar'
 mail for the research agent) would also give each agent its own context, as the brief asks; we index the whole
 mailbox here.
 
+\paragraph{Per-agent documents and contact cards.}
+The brief asks that each specialist have a context of its own. Besides the one-section private context of its Markdown
+file, a specialist can now have a folder of documents, \code{context/<name>/*.txt|md}, cut into passages of about 600
+characters. For each request, the three passages closest to it are added to the prompt of the chosen specialist
+\emph{only}, so the student agent never receives the teacher's documents. Closeness is the cosine similarity of
+\code{all-minilm:22m} embeddings (\code{Llm.embed}) or, without an embedding model, the number of shared words.
+\code{recipients.json} holds contact cards (name, role, organization, notes) that \code{lookup\_contact} consults when
+the benchmark's directory does not know a person. The feature is off unless \code{CONTEXT\allowbreak\_DIR} is set, so the benchmark
+results of this report do not depend on it. It was checked end to end on one scenario (routed to \code{teacher}, one
+passage given to it); its effect on quality is \emph{not} measured, since no benchmark scenario depends on these documents.
+
+\paragraph{Related module: category router and mail integration.}
+The repository also contains \code{email-multiagent}, an earlier and separate implementation of the minimal scenario of
+the brief: a security agent, a router with interchangeable strategies (keyword, LLM, hybrid, feedback-weighted) over seven
+categories, five specialized agents with Markdown prompts and per-category documents (retrieval with local embeddings),
+IMAP and SMTP adapters, an audit log and a web page. It is not part of the benchmark and the agentic system above does not
+use it; Section~\ref{sec:routing} reports its routing measurements because they fill a gap of the main study.
+
 \paragraph{Baseline: the workflow.}
 The workflow is the system built first: a planner splits and routes the request, searches and selects mails with a
 fixed sequence of model calls, fills a structured brief, and a writer or summarizer produces the text. Recipients,
@@ -215,8 +245,8 @@ would duplicate code; a Markdown file per agent is enough.}
 {Requests are free text, in French and English, and often name a person rather than an address; keyword lists must
 be maintained per language and per agent. An unknown or empty answer falls back to \code{generic}.}
 {Over the 60 executions of the agentic run, the router chose teacher 21 times, administration 15, student 9,
-generic 9 and research 6. Routing accuracy against a labelled set was not measured: the benchmark scenarios carry no
-expected specialist, and the routing evaluation set of a teammate's branch was not run on this router.}
+generic 9 and research 6. The benchmark scenarios carry no expected specialist, so routing accuracy is measured
+separately on labelled mail sets (Section~\ref{sec:routing}).}
 
 \choice{Autonomous specialists (tool loop) rather than a fixed workflow.}
 {The fixed planner $\rightarrow$ writer pipeline of the first system, with recipients and injection handling
@@ -307,8 +337,97 @@ Class & Responsibility \\
 \bottomrule
 \end{tabularx}
 \end{center}
-A UML class diagram is not included in this version; the table above lists the classes and their
-responsibilities, and Figure~\ref{fig:org} shows how the agents interact.
+Figure~\ref{fig:uml} gives the class diagram of the agentic layer, Figure~\ref{fig:seq} the sequence of one request,
+and Figure~\ref{fig:modules} the folders of the repository.
+
+\begin{figure}[ht]
+\centering
+\resizebox{\linewidth}{!}{\begin{tikzpicture}[
+  cls/.style={draw,align=center,font=\scriptsize,minimum width=2.8cm,minimum height=0.8cm,fill=blue!5},
+  itf/.style={cls,fill=yellow!15,dashed},
+  inh/.style={-{Triangle[open,length=2.5mm]},thick},
+  use/.style={-{Stealth[length=2mm]},thick,gray!70!black}]
+  \node[itf] (llm) at (0,0) {$\langle\langle$interface$\rangle\rangle$\\Llm};
+  \node[cls] (ollama) at (0,-1.9) {Llm.Ollama};
+  \node[itf] (router) at (4.6,0) {$\langle\langle$interface$\rangle\rangle$\\Router};
+  \node[cls] (byllm) at (4.6,-1.9) {Router.ByLlm};
+  \node[cls] (spec) at (9.2,0) {Specialist\\(record: name, description,\\prompt, context)};
+  \node[itf] (mem) at (13.8,0) {$\langle\langle$interface$\rangle\rangle$\\Memory};
+  \node[cls] (memj) at (13.8,-1.9) {Memory.JsonFile\\Memory.None};
+  \node[cls,fill=orange!12] (coord) at (8.4,-4.6) {Coordinator\\(mediator, norms)};
+  \node[cls] (opp) at (1.2,-7.0) {Opponent};
+  \node[cls] (tools) at (8.4,-7.0) {MailTools};
+  \node[cls,fill=green!8] (prof) at (13.0,-7.0) {ProfileContext\\(documents, cards;\\embeddings via Llm)};
+  \node[cls] (mail) at (8.4,-9.0) {MailboxClient\\(MCP adapter)};
+  \draw[inh] (ollama) -- (llm); \draw[inh] (byllm) -- (router); \draw[inh] (memj) -- (mem);
+  \draw[use] (byllm.west) -- node[above,font=\tiny]{uses} (ollama.east);
+  \draw[use] (coord.north west) -- node[right,font=\tiny,pos=0.45]{route} (router.east);
+  \draw[use] (coord.north) -- node[right,font=\tiny]{loads} (spec.south west);
+  \draw[use] (coord.north east) -- node[right,font=\tiny]{lessons} (mem.south west);
+  \draw[use] (coord.south west) -- (opp.north east);
+  \draw[use] (coord.south) -- (tools.north);
+  \draw[use] (coord.south east) -- (prof.north west);
+  \draw[use] (opp.north west) -- node[left,font=\tiny]{chat} (ollama.south east);
+  \draw[use] (tools.south) -- (mail.north);
+\end{tikzpicture}}
+\caption{UML class diagram of the agentic layer. The model, the router and the memory are interfaces; the
+coordinator is the only class that knows the others.}
+\label{fig:uml}
+\end{figure}
+
+\begin{figure}[ht]
+\centering
+\resizebox{\linewidth}{!}{\begin{tikzpicture}[
+  life/.style={thick,dashed,gray},
+  act/.style={draw,align=center,font=\small,minimum width=2.1cm,fill=blue!6},
+  msg/.style={-{Stealth[length=2mm]},thick},
+  lab/.style={font=\scriptsize,fill=white,inner sep=1.2pt,midway}]
+  \foreach \x/\n in {0/Owner,3.0/Coordinator,6.0/Router,9.0/Specialist,12.0/Mailbox,15.0/Opponent,18.0/Memory} {
+    \node[act] at (\x,0) {\n};
+    \draw[life] (\x,-0.4) -- (\x,-11.6);
+  }
+  \draw[msg] (0,-1.0) -- node[lab]{REQUEST} (3.0,-1.0);
+  \draw[msg] (3.0,-1.9) -- node[lab]{which agent?} (6.0,-1.9);
+  \draw[msg] (6.0,-2.6) -- node[lab]{teacher} (3.0,-2.6);
+  \draw[msg] (3.0,-3.4) -- node[lab]{recall 5 lessons} (18.0,-3.4);
+  \draw[msg] (3.0,-4.2) -- node[lab]{ROUTE (prompt, lessons, passages)} (9.0,-4.2);
+  \draw[msg] (9.0,-5.1) -- node[lab]{search, read, thread} (12.0,-5.1);
+  \draw[msg] (12.0,-5.8) -- node[lab]{mails} (9.0,-5.8);
+  \draw[msg] (9.0,-6.7) -- node[lab]{PROPOSE} (3.0,-6.7);
+  \draw[msg] (3.0,-7.5) -- node[lab]{proposal and evidence} (15.0,-7.5);
+  \draw[msg] (15.0,-8.2) -- node[lab]{ACCEPT or ATTACK} (3.0,-8.2);
+  \draw[msg] (3.0,-9.0) -- node[lab]{ATTACK (at most twice)} (9.0,-9.0);
+  \draw[msg] (9.0,-9.7) -- node[lab]{CONCEDE or DEFEND} (3.0,-9.7);
+  \draw[msg] (3.0,-10.5) -- node[lab]{lesson, on a concession} (18.0,-10.5);
+  \draw[msg] (3.0,-11.4) -- node[lab]{COMMIT} (0,-11.4);
+\end{tikzpicture}}
+\caption{Sequence diagram of one request in the agentic organization. Agents never call each other: every message
+goes through the coordinator.}
+\label{fig:seq}
+\end{figure}
+
+\begin{figure}[ht]
+\centering
+\resizebox{0.95\linewidth}{!}{\begin{tikzpicture}[
+  box/.style={draw,rounded corners=2pt,align=center,font=\small,minimum width=3.3cm,minimum height=1.0cm,fill=blue!6},
+  arr/.style={-{Stealth[length=2mm]},thick}]
+  \node[box,fill=green!8] (com) at (0,0) {\code{com/}\\workflow and agentic Java};
+  \node[box] (ui) at (-5.2,2.6) {\code{ui/}\\chat page, agents editor};
+  \node[box] (spec) at (5.2,2.6) {\code{specialists/}\\one prompt file per agent};
+  \node[box] (ctx) at (5.2,0) {\code{context/}\\documents, contact cards};
+  \node[box,fill=orange!10] (bench) at (-5.2,-2.6) {\code{benchmark/}\\mailbox MCP, scoring};
+  \node[box] (eval) at (0,-2.6) {\code{eval/}\\routing evaluation};
+  \node[box,fill=gray!12] (em) at (5.2,-2.6) {\code{email-multiagent/}\\category router, IMAP};
+  \draw[arr] (ui) -- node[above,font=\scriptsize,fill=white,inner sep=1pt]{HTTP :8787} (com);
+  \draw[arr] (com) -- (spec); \draw[arr] (com) -- (ctx);
+  \draw[arr,dashed] (bench) -- node[left,font=\scriptsize,fill=white,inner sep=1pt]{MCP, trace} (com);
+  \draw[arr] (eval) -- (com);
+  \draw[arr,dashed] (ui) to[bend left=15] node[above,font=\scriptsize]{edits} (spec);
+\end{tikzpicture}}
+\caption{Folders of the repository. The arrow \code{ui/} to \code{specialists/} is the agents editor; \code{email-multiagent/}
+is separate from the agentic system.}
+\label{fig:modules}
+\end{figure}
 
 \subsection{Design patterns and why}
 \begin{description}
@@ -333,26 +452,72 @@ that a later mail overrides earlier dates and places.
 \subsection{Answers to the design questions of the brief}
 \begin{enumerate}
   \item \emph{What is an agent?} An entity with its own goal, its own prompt and context, a set of actions (tools or
-        messages), and autonomy over the order of its actions.
-  \item \emph{Responsibilities:} see the agent list above.
-  \item \emph{Information:} router: agent descriptions; specialist: its prompt, context, lessons and what it reads;
-        opponent: the request and the evidence only.
-  \item \emph{Communication:} messages through the coordinator.
-  \item \emph{Routing:} LLM classification over descriptions (a rule-based or voting router plugs in as another
-        \code{Router}).
-  \item \emph{Several suitable agents:} the router picks one; the opponent catches errors the wrong agent makes.
-  \item \emph{No suitable agent:} \code{generic}.
-  \item \emph{Contexts:} Markdown files, one per agent.
-  \item \emph{History:} read on demand via thread tools; the conversation of one turn is the agent's chat history.
-  \item \emph{Avoiding too much context:} tools return 10 results with 140-character previews; the opponent gets
-        at most 1500 characters per mail and 7000 in total; only 5 lessons are recalled.
-  \item \emph{Adding an agent:} add \code{specialists/<name>.md}.
-  \item \emph{Changing the LLM:} \code{AGENT\_MODEL} or another \code{Llm} implementation.
-  \item \emph{Persistence:} agent files, memory file, drafts in the mailbox, benchmark runs.
+        messages), and autonomy over the order of its actions. In the code, a specialist is a data record
+        (\code{Specialist}) interpreted by the same tool loop; the router and the opponent are agents with a single action each.
+  \item \emph{Responsibilities:} the router chooses a specialist; the specialist searches the mailbox and proposes a draft,
+        a summary, a question or a refusal; the opponent looks for a real flaw; the coordinator enforces the protocol and commits.
+  \item \emph{Information:} router: the request and the agent descriptions; specialist: its prompt, its context section, its
+        documents (three passages per request), its lessons and the mails it reads; opponent: the request and the evidence only.
+  \item \emph{Communication:} typed messages (REQUEST, ROUTE, PROPOSE, ACCEPT, ATTACK, CONCEDE, DEFEND, COMMIT) through
+        the coordinator; mailbox access through MCP tools (Figure~\ref{fig:seq}).
+  \item \emph{Routing:} LLM classification over the agents' descriptions, measured in Section~\ref{sec:routing}; a rule-based
+        or voting router plugs in as another \code{Router}.
+  \item \emph{Several suitable agents:} the router returns one; the opponent catches the errors the wrong agent makes. On the
+        hard set the router misclassified ambiguous mails (Section~\ref{sec:routing}).
+  \item \emph{No suitable agent:} \code{generic}, which may ask the owner or refuse.
+  \item \emph{Contexts:} one Markdown file per agent (prompt and optional context section), one folder of documents per agent
+        (\code{context/<name>/}), contact cards (\code{recipients.json}) and the agent's lessons.
+  \item \emph{History:} the thread is read on demand (\code{read\_thread}, oldest first); the conversation of one turn is the
+        agent's chat history; the chat page passes the last four exchanges as text.
+  \item \emph{Avoiding too much context:} tools return 10 results with 140-character previews; three document passages of
+        about 600 characters; the opponent gets at most 1500 characters per mail and 7000 in total; five lessons.
+  \item \emph{Adding an agent:} add \code{specialists/<name>.md}, or create it in the \emph{Edit agents} panel; no code changes.
+  \item \emph{Changing the LLM:} \code{AGENT\_MODEL} or another \code{Llm} implementation; routing, opponent and embeddings
+        go through the same interface.
+  \item \emph{Persistence:} persistent: agent files, context documents, contact cards, the memory file (\code{MEMORY\_FILE}),
+        drafts in the mailbox, benchmark runs. Not persistent by default: the lessons, which are discarded after the turn.
   \item \emph{Advantages and limits:} Section~\ref{sec:discussion}.
 \end{enumerate}
 
 % ============================================================
+\section{User interface}
+\label{sec:ui}
+The chat page (\code{ui/}, React) talks to a small local server (\code{UiServer}, port 8787, localhost only). It now has
+two modes, chosen with a button in its top bar:
+\begin{itemize}
+  \item \textbf{Workflow} (default, unchanged): the planner and writer pipeline of the first system.
+  \item \textbf{Agents} (experimental): router, specialist, opponent and coordinator. Each answer shows the agent chosen
+        by the router and, in a collapsible list, the document passages given to it.
+\end{itemize}
+An \emph{Edit agents} panel lets the user, without touching the code:
+list the agents; change an agent's description (the line the router reads), system prompt and built-in context;
+create a new agent; and manage the agent's context documents (create, edit, delete, import a text file).
+The server re-reads the agents and their documents for every request, so a change applies to the next turn.
+It validates names and file names, limits a file to 100\,KB, writes only inside \code{specialists/} and \code{context/},
+and never deletes an agent. The mode was checked in a browser: creating an agent and a document, then sending a request,
+which was routed to the \code{teacher} agent with one passage of context.
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{@{}p{0.34\linewidth}p{0.6\linewidth}@{}}
+\toprule
+Wish of the brief (Section~10) & State \\
+\midrule
+View the existing agents & done (agents panel) \\
+Create a new specialized agent & done \\
+Modify an agent, define its system prompt & done \\
+Associate files or context elements & done (documents and built-in context) \\
+View the agent selected by the router & done (Agents mode) \\
+View the proposed response & done (draft panel) \\
+View a received email & \textbf{not done}: the page shows the summary and its sources, not the inbox \\
+Accept, modify or reject the response & \textbf{not done}: the draft is saved to the mailbox and nothing is sent;
+the page does not edit or reject it (it can veto a learned lesson) \\
+\bottomrule
+\end{tabular}
+\caption{The interface against the wishes of the brief.}
+\label{tab:ui}
+\end{table}
+
 \section{Methodology}
 \subsection{Benchmark}
 Scenarios are mailboxes of a fictional university (only invented people and \code{.example} addresses),
@@ -405,7 +570,7 @@ Same model, same judge, same seed, same mailbox data for all configurations.
 \label{sec:results}
 \begin{table}[ht]
 \centering
-\begin{tabular}{lrrrrr}
+\resizebox{\linewidth}{!}{\begin{tabular}{lrrrrr}
 \toprule
  & WF & WF+M & AG$-$O & AG & AG+M \\
 \midrule
@@ -417,7 +582,7 @@ injection & 1.00 & 1.00 & n/c & .00 & .00 \\
 reliability & 1.00 & 1.00 & n/c & 1.00 & .97 \\
 p95 latency (s) & 17.1 & 17.1 & n/c & 26.9 & 224.4 \\
 \bottomrule
-\end{tabular}
+\end{tabular}}
 \caption{Main results on the 20 development scenarios, 3 trials each. n/c: not completed at submission time
 (the run without the opponent was still running); its curves are absent from the figures.}
 \label{tab:main}
@@ -425,6 +590,7 @@ p95 latency (s) & 17.1 & 17.1 & n/c & 26.9 & 224.4 \\
 
 \begin{figure}[ht]
 \centering
+\ifhaspgf
 \begin{tikzpicture}
 \begin{axis}[width=0.62\linewidth, height=6cm, xlabel={trial}, ylabel={mean execution score}, xtick={1,2,3},
   ymin=0.3, ymax=1.01, legend pos=south east, legend columns=2]
@@ -435,12 +601,14 @@ p95 latency (s) & 17.1 & 17.1 & n/c & 26.9 & 224.4 \\
 \addplot[agM, mark=square*, thick] table[x=trial, y=agMem] {data/curves.csv}; \addlegendentry{AG+M}
 \end{axis}
 \end{tikzpicture}
+\else\missingplot\fi
 \caption{Learning curves: mean score per trial (RQ3). Memory configurations are dark, their no-memory twins light.}
 \label{fig:curves}
 \end{figure}
 
 \begin{figure}[ht]
 \centering
+\ifhaspgf
 \begin{tikzpicture}
 \begin{axis}[width=\linewidth, height=6cm, ybar=0.6pt, bar width=5pt, ymin=0, ymax=1.05, ylabel={pass rate},
   xtick=data, xticklabels from table={data/dims.csv}{dim}, legend style={at={(0.5,1.03)}, anchor=south, legend columns=5}]
@@ -451,12 +619,14 @@ p95 latency (s) & 17.1 & 17.1 & n/c & 26.9 & 224.4 \\
 \addplot[fill=agM, draw=none] table[x=x, y=agMem] {data/dims.csv}; \addlegendentry{AG+M}
 \end{axis}
 \end{tikzpicture}
+\else\missingplot\fi
 \caption{Pass rate per scorecard dimension, all trials (RQ1, RQ2).}
 \label{fig:dims}
 \end{figure}
 
 \begin{figure}[ht]
 \centering
+\ifhaspgf
 \begin{tikzpicture}
 \begin{axis}[width=\linewidth, height=5.5cm, ybar=0.6pt, bar width=6pt, ymin=0, ymax=1.05, ylabel={mean score},
   xtick=data, xticklabels from table={data/kinds.csv}{kind}, legend style={at={(0.5,1.03)}, anchor=south, legend columns=5}]
@@ -467,12 +637,14 @@ p95 latency (s) & 17.1 & 17.1 & n/c & 26.9 & 224.4 \\
 \addplot[fill=agM, draw=none] table[x=x, y=agMem] {data/kinds.csv}; \addlegendentry{AG+M}
 \end{axis}
 \end{tikzpicture}
+\else\missingplot\fi
 \caption{Mean score per scenario kind.}
 \label{fig:kinds}
 \end{figure}
 
 \begin{figure}[ht]
 \centering
+\ifhaspgf
 \begin{tikzpicture}
 \begin{axis}[width=0.48\linewidth, height=5.5cm, xlabel={trial}, ylabel={per execution}, xtick={1,2,3},
   ymin=0, legend pos=north east, title={\small negotiation (AG+M)}]
@@ -492,6 +664,7 @@ p95 latency (s) & 17.1 & 17.1 & n/c & 26.9 & 224.4 \\
 \addplot[agM, mark=square*, thick] table[x=trial, y=agMem] {data/latency.csv}; \addlegendentry{AG+M}
 \end{axis}
 \end{tikzpicture}
+\else\missingplot\fi
 \caption{Left: negotiation statistics per execution across trials with memory (do lessons reduce attacks?).
 Right: cost of friction and memory.}
 \label{fig:debate}
@@ -553,6 +726,44 @@ include the sender's address''). They did no harm only because recipients and cc
 guards made the workflow robust to a polluted memory, but also prevented memory from helping.
 
 % ============================================================
+\subsection{Routing quality}
+\label{sec:routing}
+The benchmark scenarios carry no expected specialist, so routing was measured on labelled mail sets: a \emph{standard} set
+of 15 mails (3 per category: student, teacher, administration, research, generic) and a \emph{hard} set of 12 mails with
+indirect wording and ambiguous cases, written for this study (\code{emails.jsonl}, \code{emails-hard.jsonl}). We ran the
+three category routers of \code{email-multiagent} and the agentic \code{Router.ByLlm}, all with the same model,
+\code{qwen3-abliterated:4b}, one pass, temperature 0 (the 8B model used elsewhere in this report does not run on the
+machine used for these measurements).
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{lrr}
+\toprule
+Router & Standard (15 mails) & Hard (12 mails) \\
+\midrule
+Keyword (category router) & 15/15 & 3/12 \\
+LLM (category router) & 13/15 & 8/12 \\
+Hybrid (category router) & 15/15 & 7/12 \\
+Agentic \code{Router.ByLlm} & 15/15 & 9/12 \\
+\bottomrule
+\end{tabular}
+\caption{Routing accuracy, \code{qwen3-abliterated:4b}, one pass. Files: \code{eval/results/}.}
+\label{tab:routing}
+\end{table}
+
+\paragraph{Reading.} The standard set is written with the keywords of the keyword router, so its score proves little:
+on the hard set the keyword router falls to 3 of 12 because most mails use none of its words. The agentic router is the
+best of the four (9 of 12). The hybrid router is \emph{below} the LLM router (7 against 8): when its keywords are
+confident but wrong, the LLM is never consulted (a consortium mail containing ``meeting'' goes to the teacher agent; a
+student's question about a project grade goes to research because of ``project''). The agentic router misses three mails:
+a lecturer's practical-work request (sent to student), a greeting (sent to student) and a mail mixing the research
+project and administration, which is ambiguous by construction.
+
+\paragraph{Limits.} Twelve and fifteen mails, one pass; the labels were written by us and the ambiguous ones are
+subjective; the agentic router receives a request (``Reply to this mail from \ldots'') while the category routers receive
+the mail itself; and the model is not the one of the main experiments, so these figures must not be compared with
+those of Table~\ref{tab:main}.
+
 \section{Discussion}
 \label{sec:discussion}
 \paragraph{Observed behaviours of the agentic organization} (from the message logs, counts in Table~\ref{tab:debate}):
@@ -581,7 +792,16 @@ a logged message, so the organization is auditable and its mechanisms can be mea
         Transfer to unseen scenarios (the hard and held-out sets) is not yet measured.
   \item \textbf{Lessons are not validated.} A lesson is kept whenever the specialist concedes, whether or not the
         attack was right.
-  \item \textbf{Contacts} come from the benchmark's directory file.
+  \item \textbf{Contacts} come from the benchmark's directory file or, when the context folder is enabled, from
+        \code{recipients.json}.
+  \item \textbf{Interface.} The chat page edits agents, prompts and documents, but it does not show the inbox and does
+        not accept, edit or reject a draft (Table~\ref{tab:ui}).
+  \item \textbf{Per-agent documents} are verified to reach the chosen agent, but their effect on quality is not measured.
+  \item \textbf{Routing measurements} use a small model, 15 and 12 labelled mails, one pass, and labels written by us.
+  \item \textbf{Two systems.} The category router of \code{email-multiagent} and the agentic organization are not merged:
+        the latter does not use the former's security agent or its feedback-weighted strategy.
+  \item \textbf{Ablations.} The runs without the opponent and with RAG over the mailbox still need the 8B model and were
+        not repeated for this revision.
 \end{itemize}
 
 \section{Possible improvements}
@@ -607,19 +827,21 @@ the RAG comparison, and an opponent that wins at the deadline or whose influence
 % ============================================================
 \section*{Contributions of group members}
 \begin{center}
-\begin{tabularx}{\linewidth}{lX}
+\begin{tabularx}{\linewidth}{llX}
 \toprule
-Name & Contributions \\
+Name & Student number & Contributions \\
 \midrule
-Kyllian Pham & Agentic system: router, specialist agents, opponent, coordinator and negotiation protocol \\
-Jade Frelat & Benchmark: scenarios, answer keys, scoring and evaluation protocol \\
-Valentin Vincent & RAG: design and implementation of retrieval \\
-Bierhoff Theolien & Workflow system: planner, writer, summarizer, critic and memory \\
+Kyllian Pham & \todo{student number} & Agentic system: router, specialist agents, opponent, coordinator and negotiation protocol \\
+Jade Frelat & \todo{student number} & Benchmark: scenarios, answer keys, scoring and evaluation protocol \\
+Valentin Vincent & \todo{student number} & RAG: design and implementation of retrieval \\
+Bierhoff Theolien & \todo{student number} & Workflow system: planner, writer, summarizer, critic and memory \\
 \bottomrule
 \end{tabularx}
 \end{center}
 
-Student numbers are not included in this version.
+This revision adds the routing measurements, the per-agent documents and contact cards, the agents editor of the chat
+page, the diagrams, and the module \code{email-multiagent} with its evaluation sets.
+\todo{the group states who wrote each of these parts}
 
 \section*{Reproducibility}
 \begin{verbatim}
@@ -635,4 +857,17 @@ python3 ../report/extract.py wfNomem=<run> wfMem=<run> \
 \end{verbatim}
 Every run keeps its traces and, for the agentic system, \code{<trace>.agentic.json} with the route, the
 negotiation counts and every message.
+
+\paragraph{Added in this revision.}
+\begin{verbatim}
+# routing: category routers (keyword, LLM, hybrid), then the agentic router
+cd email-multiagent
+java -cp <cp> fr.mas.email.evaluation.EvaluationMain [--dataset <emails.jsonl>]
+java -cp <cp> com.assistant.mail.agentic.RouterEval \
+  specialists <model> <emails.jsonl> [out.csv]
+# chat page with the Agents mode and the agents editor
+# (the script sets CONTEXT_DIR to the context folder)
+./ui/agent
+cd ui && npm install && npm run dev
+\end{verbatim}
 \end{document}

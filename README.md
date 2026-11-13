@@ -149,6 +149,48 @@ java -cp '<agent classes>:target/classes:target/lib/*' com.assistant.mail.agenti
 
 Options: `OPPONENT=0` removes the opponent, `MEMORY_FILE=<path>` keeps lessons, and `MAIL_DEBUG=1` prints every agent message. Next to the trace, `<trace>.agentic.json` holds the route, the negotiation counts and the message log. `report/extract.py` turns benchmark runs into the report's plot data.
 
+## Agents mode and agents editor (chat page)
+
+The chat page has a **Mode: Workflow / Agents** button. Workflow is the planner and writer pipeline. Agents (experimental) runs the agentic organization above and shows, under each answer, the agent the router chose and the document passages given to it. `OPPONENT=0 ./ui/agent` drops the opponent to answer faster.
+
+**Edit agents** opens a panel to list the agents, change an agent's description (the line the router reads), system prompt and built-in context, create an agent, and manage its context documents (create, edit, delete, import a text file). A change applies to the next request. Names and file names are validated, a file is limited to 100 KB, writes stay inside `specialists/` and `context/`, and an agent cannot be deleted. These edits change the tracked files; `git checkout specialists context` undoes them.
+
+## Per-agent documents and contact cards
+
+Each specialist can have its own documents in `context/<name>/*.txt|md`. For a request, the three closest passages (embeddings from `all-minilm:22m`, or shared words without it) are added to the prompt of the chosen specialist only. `context/recipients.json` holds contact cards that `lookup_contact` uses when the benchmark directory does not know a person. It is off unless `CONTEXT_DIR` points to the folder (`./ui/agent` sets it); without it nothing changes and the benchmark scores are unaffected.
+
+## Routing evaluation
+
+`eval/` measures routing on the labelled mail sets of `email-multiagent` (15 standard mails and 12 harder ones). Results with `qwen3-abliterated:4b`, one pass, are in `eval/results/` and in the corrected report (`report/report-corrige.tex`):
+
+| Router | Standard (15) | Hard (12) |
+|---|---|---|
+| Keyword (category router) | 15/15 | 3/12 |
+| LLM (category router) | 13/15 | 8/12 |
+| Hybrid (category router) | 15/15 | 7/12 |
+| Agentic `Router.ByLlm` | 15/15 | 9/12 |
+
+```bash
+# agentic router: compile main's sources with the evaluation class, then run it (benchmark/target/lib must exist)
+find com -name '*.java' ! -name PlannerWorkflow.java ! -name PlannerWorkflowCheck.java \
+  ! -name ValidatorAgentClient.java > /tmp/sources.txt
+echo eval/src/com/assistant/mail/agentic/RouterEval.java >> /tmp/sources.txt
+javac --release 21 -encoding UTF-8 -cp "benchmark/target/lib/*" -d /tmp/eval-classes @/tmp/sources.txt
+java -cp "/tmp/eval-classes:benchmark/target/lib/*" com.assistant.mail.agentic.RouterEval \
+  specialists <model> email-multiagent/email-core/src/main/resources/evaluation/emails-hard.jsonl
+```
+
+The category routers run with `fr.mas.email.evaluation.EvaluationMain [--dataset <file>]` from `email-multiagent/` (see its README).
+
+## Other folders
+
+- `email-multiagent/`: a separate Maven project with a category router (keyword, LLM, hybrid, feedback-weighted), a security agent, five specialized agents with per-category documents, IMAP and SMTP adapters and a web page. `./email-multiagent/run.sh` builds `assistant-core` first, then starts it on http://localhost:8080. Put the mail credentials in `email-multiagent/email-core/src/main/resources/config.properties` and do not commit them. It is not used by the agentic system.
+- `assistant-core/`: an earlier Maven module with its own planner, writer and summarizer workflows, a terminal and a small web chat. `cd assistant-core && mvn test` runs 55 tests.
+- `legacy/`: the first Outlook version and the project statement.
+- `report/`: `report.tex` is the original report, left unchanged; `report-corrige.tex` is the corrected one (diagrams, routing measurements, interface, contributions with student numbers to fill in). Build with `latexmk -pdf`; the result figures need the `pgfplots` LaTeX package.
+
+Checks of the code added here: `cd email-multiagent && mvn test`, and `java -ea -cp <classes> com.assistant.mail.agentic.ProfileContextCheck` and `com.assistant.mail.agentic.AgenticUiCheck` (compile as above).
+
 ## Benchmark
 
 The 20 fictional scenarios and the scorer are documented in `benchmark/README.md`.
