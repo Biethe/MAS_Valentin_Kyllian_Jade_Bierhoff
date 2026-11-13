@@ -26,11 +26,11 @@ public final class OllamaAgent implements PlannerAgentClient, DrafterAgentClient
     private final JsonMapper json = JsonMapper.builder().build();
 
     public static String writerModel() {
-        return System.getenv().getOrDefault("AGENT_MODEL", "qwen3.5:4b");
+        return System.getenv().getOrDefault("AGENT_MODEL", "llama3.1:8b");
     }
 
     public static String plannerModel() {
-        return System.getenv().getOrDefault("PLANNER_MODEL", "qwen3.5:9b-q4_K_M");
+        return System.getenv().getOrDefault("PLANNER_MODEL", "llama3.1:8b");
     }
 
     public static String criticModel() {
@@ -38,7 +38,7 @@ public final class OllamaAgent implements PlannerAgentClient, DrafterAgentClient
     }
 
     public static String judgeModel() {
-        return System.getenv().getOrDefault("JUDGE_MODEL", "tev1");
+        return System.getenv().getOrDefault("JUDGE_MODEL", "tev1:0.8b");
     }
 
     @Override
@@ -52,14 +52,18 @@ public final class OllamaAgent implements PlannerAgentClient, DrafterAgentClient
         body.putArray("messages")
                 .add(json.createObjectNode().put("role", "system").put("content", system == null ? "" : system))
                 .add(json.createObjectNode().put("role", "user").put("content", user == null ? "" : user));
-        body.putObject("options").put("temperature", 0).put("seed", 42).put("num_ctx", 8192);
+        body.putObject("options").put("temperature", 0).put("seed", 42).put("num_predict", 1024); // temp 0 can loop forever; nothing we ask for is longer
         body.put("think", false);
         body.put("keep_alive", "10m");
         HttpRequest request = HttpRequest.newBuilder(URI.create(base + "/api/chat"))
                 .timeout(Duration.ofMinutes(6))
                 .POST(HttpRequest.BodyPublishers.ofString(body.toString()))
                 .build();
-        return chat(request);
+        String answer = chat(request);
+        if (System.getenv("MAIL_DEBUG") != null) { // prints each call: first line of its system prompt, then the answer
+            System.err.println("--- " + (system == null ? "" : system.strip().lines().findFirst().orElse("")) + "\n" + answer);
+        }
+        return answer;
     }
 
     private String chat(HttpRequest request) {
@@ -181,7 +185,7 @@ public final class OllamaAgent implements PlannerAgentClient, DrafterAgentClient
         if (same(system, PlannerSystemPrompt.SPLIT, PlannerSystemPrompt.ROUTE, PlannerSystemPrompt.ANSWER,
                 PlannerSystemPrompt.TOOLS, PlannerSystemPrompt.ASK_USER, PlannerSystemPrompt.LOCATE,
                 PlannerSystemPrompt.READ, PlannerSystemPrompt.BRIEF, PlannerSystemPrompt.ARGUMENT,
-                PlannerSystemPrompt.LESSON, PlannerSystemPrompt.CHECKLIST)) {
+                PlannerSystemPrompt.LESSON, PlannerSystemPrompt.CHECKLIST, PlannerSystemPrompt.INJECTION)) {
             return planner;
         }
         return writer;

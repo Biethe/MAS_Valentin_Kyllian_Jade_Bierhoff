@@ -20,7 +20,8 @@ import tools.jackson.databind.node.ObjectNode;
 public class Judge {
 
     static final JsonMapper JSON = JsonMapper.builder().build();
-    static final String MODEL = "llama3.1:8b";
+    /** BENCH_JUDGE picks another judge, e.g. one from a different family than the system under test. */
+    static final String MODEL = System.getenv().getOrDefault("BENCH_JUDGE", "llama3.1:8b");
     static final String PROMPT_VERSION = "5";
     static final String SYSTEM = """
             You grade one criterion of an email assistant's output. Judge only that criterion, nothing else:
@@ -53,10 +54,11 @@ public class Judge {
         JsonNode out = Checks.step(trace, "output").path("output");
         JsonNode o = scenario.path("expect").path("output");
         String lang = o.path("language").asString();
-        Map<String, String> rubrics = new LinkedHashMap<>();
-        String text;
+        // a request may produce both a draft and a summary; each is graded on its own rubrics
+        List<Map.Entry<String, Map<String, String>>> graded = new java.util.ArrayList<>();
         if (out.has("draft") && scenario.path("expect").path("tools").path("draft").isObject()) {
-            text = "Subject: " + out.path("draft").path("subject").asString() + "\n\n" + out.path("draft").path("body").asString();
+            Map<String, String> rubrics = new LinkedHashMap<>();
+            String text = "Subject: " + out.path("draft").path("subject").asString() + "\n\n" + out.path("draft").path("body").asString();
             String role = o.path("recipientRole").asString("");
             rubrics.put("tone", "The email is written to a " + role + ". The expected tone for a " + role + " is:\n"
                     + tones.path(role).path(lang).asString()
@@ -69,18 +71,22 @@ public class Judge {
                     + "\nFAIL only if the email is about something else, or a whole paragraph is off-topic.");
             rubrics.put("concise", "Is the email concise? A greeting, a few sentences and a closing are normal."
                     + "\nFAIL only if it is clearly padded: repeated points, filler sentences or rambling.");
-        } else if (out.has("summary") && Checks.texts(scenario.path("expect").path("route")).contains("SUMMARIZE")) {
-            text = out.path("summary").asString();
+            graded.add(Map.entry(text, rubrics));
+        }
+        if (out.has("summary") && Checks.texts(scenario.path("expect").path("route")).contains("SUMMARIZE")) {
+            Map<String, String> rubrics = new LinkedHashMap<>();
             rubrics.put("relevance", relevance(scenario, "summary")
                     + "\nDates, deadlines, places and actions from that thread are on topic, even secondary ones."
                     + "\nFAIL only if the summary is about a different thread or spends sentences on social chit-chat.");
-        } else return; // questions to the user have nothing qualitative to grade
+            graded.add(Map.entry(out.path("summary").asString(), rubrics));
+        }
+        if (graded.isEmpty()) return; // questions and refusals have nothing qualitative to grade
 
         ArrayNode verdicts = result.putArray("judge");
         ObjectNode layer = (ObjectNode) result.path("layers").path("output");
         ObjectNode dims = (ObjectNode) result.path("dims");
-        for (var c : rubrics.entrySet()) {
-            ObjectNode v = grade(c.getKey(), c.getValue(), text);
+        for (var g : graded) for (var c : g.getValue().entrySet()) {
+            ObjectNode v = grade(c.getKey(), c.getValue(), g.getKey());
             verdicts.add(v);
             // a summary's concise dimension also needs the word ratio, already in dims
             dims.put(c.getKey(), dims.path(c.getKey()).asBoolean(true) && v.path("pass").asBoolean());

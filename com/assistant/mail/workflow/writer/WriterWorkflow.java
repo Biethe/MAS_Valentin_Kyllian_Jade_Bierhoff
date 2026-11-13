@@ -75,21 +75,23 @@ public final class WriterWorkflow {
     }
 
     private void debate(Brief brief, Checklist checklist, String raw, List<Dispute> disputes, StringBuilder corrections) {
+        if (System.getenv("MAIL_CRITIC") == null) return; // off by default: 3 extra model calls per dispute
         for (Map<String, String> gap : blocks(call(DrafterSystemPrompt.CRITIC, criticPrompt(brief, raw, checklist)))) {
+            if (disputes.size() == 2) break; // ponytail: 2 disputes per draft caps latency; raise if lessons run dry
             BriefPart part = enumOrNull(BriefPart.class, gap.get("part"));
             String argument = text(gap.get("argument")).strip();
             String expected = text(gap.get("expected")).strip();
-            if (part == null || argument.isEmpty()) continue;
+            if (part == null || argument.isEmpty() || agrees(argument)) continue;
             Dispute dispute = new Dispute();
             dispute.setAgent(AgentKind.DRAFTER);
             dispute.setTask(brief.getTask());
             dispute.setPart(part);
             dispute.setCriticArgument(argument);
             dispute.setCorrection(text(gap.get("instead")).strip());
-            dispute.setAgentArgument(field(call(DrafterSystemPrompt.ARGUMENT, argumentPrompt(brief, raw, part, expected, argument)), "argument"));
-            boolean criticWins = "critic".equalsIgnoreCase(field(call(DrafterSystemPrompt.JUDGE, judgePrompt(brief, raw, part, expected, dispute)), "winner"));
+            dispute.setAgentArgument(answer(call(DrafterSystemPrompt.ARGUMENT, argumentPrompt(brief, raw, part, expected, argument)), "argument"));
+            boolean criticWins = answer(call(DrafterSystemPrompt.JUDGE, judgePrompt(brief, raw, part, expected, dispute)), "winner").toLowerCase().startsWith("critic");
             dispute.setCriticRight(criticWins);
-            dispute.setLesson(field(call(DrafterSystemPrompt.LESSON, lessonPrompt(brief, part, expected, dispute)), "lesson"));
+            dispute.setLesson(answer(call(DrafterSystemPrompt.LESSON, lessonPrompt(brief, part, expected, dispute)), "lesson"));
             boolean vetoed = veto != null && veto.veto(dispute.getLesson());
             PlannerMemory.remember(memory, dispute, vetoed);
             disputes.add(dispute);
@@ -103,11 +105,31 @@ public final class WriterWorkflow {
 
     private static Draft draft(Brief brief, Checklist checklist, String raw) {
         Draft draft = new Draft();
-        draft.setRecipients(linesOf(field(raw, "recipients")));
-        draft.setCc(linesOf(field(raw, "cc")));
-        draft.setBcc(linesOf(field(raw, "bcc")));
-        draft.setSubject(field(raw, "subject"));
-        draft.setBody(field(raw, "body"));
+        List<String> recipients = new ArrayList<>();
+        if (brief.getTo() != null) {
+            for (String line : brief.getTo()) if (line != null && line.contains("@")) recipients.add(line);
+        }
+        if (recipients.isEmpty() && brief.getFacts() != null) {
+            StringBuilder blob = new StringBuilder();
+            for (com.assistant.mail.model.fact.Information fact : brief.getFacts()) blob.append(fact.getBody()).append('\n');
+            String email = com.assistant.mail.workflow.planner.Planner.directory(blob.toString());
+            if (email != null) recipients.add(email);
+        }
+        draft.setRecipients(recipients);
+        List<String> cc = new ArrayList<>(); // the brief decides who is copied, never text the model saw in a mail
+        if (brief.getCc() != null) {
+            for (String line : brief.getCc()) if (line != null && line.contains("@")) cc.add(line);
+        }
+        draft.setCc(cc);
+        draft.setBcc(List.of());
+        String subject = field(raw, "subject");
+        draft.setSubject(subject.isBlank() ? "Message" : subject);
+        String body = field(raw, "body");
+        if (body == null) body = "";
+        if (!body.matches("(?is)^\\s*(bonjour|bonsoir|salut|hello|hi|dear|cher|chère|madame|monsieur)\\b.*")) {
+            body = (brief.getLanguage() == com.assistant.mail.model.brief.Language.FR ? "Bonjour,\n\n" : "Hello,\n\n") + body;
+        }
+        draft.setBody(body);
         draft.setTone(brief.getTone());
         draft.setStructure(brief.getStructure());
         draft.setInformation(covered(brief, checklist));
@@ -117,6 +139,7 @@ public final class WriterWorkflow {
 
     private void mark(Checklist checklist, String raw) {
         List<ChecklistItem> items = checklist.getItems();
+        if (items == null || items.isEmpty()) return;
         boolean[] used = new boolean[items.size()];
         for (Map<String, String> block : blocks(call(DrafterSystemPrompt.MARK, markPrompt(raw, checklist)))) {
             BriefPart part = enumOrNull(BriefPart.class, block.get("part"));
@@ -172,6 +195,15 @@ public final class WriterWorkflow {
         return "draft:\n" + raw + "\n\nchecklist:\n" + lines(checklist);
     }
 
+    /** A friend, or an original mail that opens like one. */
+    static boolean informal(Brief brief) {
+        if (brief.getRecipientRole() != null && brief.getRecipientRole().toLowerCase(java.util.Locale.ROOT).contains("friend")) return true;
+        for (Email email : brief.getEmails()) {
+            if (text(email.getBody()).matches("(?is)^(salut|coucou|hey|hi)\\b.*")) return true;
+        }
+        return false;
+    }
+
     static String briefText(Brief brief) {
         StringBuilder text = new StringBuilder();
         text.append("task: ").append(brief.getTask() == null ? "" : brief.getTask().name()).append('\n');
@@ -183,7 +215,15 @@ public final class WriterWorkflow {
         for (String address : brief.getBcc()) text.append("bcc: ").append(address).append('\n');
         if (brief.getReplyToId() != null) text.append("replyTo: ").append(brief.getReplyToId()).append('\n');
         for (String note : brief.getStyleNotes()) text.append("styleNote: ").append(note).append('\n');
-        for (Information fact : brief.getFacts()) text.append("fact: ").append(text(fact.getBody())).append('\n');
+        if (informal(brief)) {
+            text.append(brief.getLanguage() == com.assistant.mail.model.brief.Language.FR
+                    ? "register: informal. The recipient is a friend: tutoie (tu, te, ton), greet with Salut, close with À plus. Never vous.\n"
+                    : "register: informal. The recipient is a friend: greet with Hi, close with Cheers or See you. Warm and casual.\n");
+        }
+        for (Information fact : brief.getFacts()) {
+            if (fact.getKind() == com.assistant.mail.model.fact.InformationKind.SUSPICIOUS_INSTRUCTION) continue;
+            text.append("fact: ").append(text(fact.getBody())).append('\n');
+        }
         for (Email email : brief.getEmails()) {
             text.append("original mail:\n");
             text.append("subject: ").append(text(email.getSubject())).append('\n');
@@ -255,23 +295,28 @@ public final class WriterWorkflow {
         return raw == null ? "" : raw;
     }
 
-    static List<Map<String, String>> blocks(String raw) {
+    /** "key:" alone on a line, or one of the block keys with its value on the same line ("part: TONE"). */
+    private static final java.util.regex.Pattern KEY = java.util.regex.Pattern.compile(
+            "([A-Za-z][A-Za-z0-9]*):\\s*|\\s*(part|expected|argument|instead|checked|feedback):[ \\t]*(.*)");
+
+    public static List<Map<String, String>> blocks(String raw) {
         List<Map<String, String>> out = new ArrayList<>();
         Map<String, String> current = null;
         String key = null;
         StringBuilder value = new StringBuilder();
         if (raw == null) return out;
         for (String line : raw.split("\n", -1)) {
-            if (line.matches("[A-Za-z][A-Za-z0-9]*:")) {
+            java.util.regex.Matcher m = KEY.matcher(line);
+            if (m.matches()) {
                 if (key != null) current.put(key, value.toString().trim());
-                String next = line.substring(0, line.length() - 1);
+                String next = m.group(1) != null ? m.group(1) : m.group(2);
                 if (current != null && current.containsKey(next)) {
                     out.add(current);
                     current = null;
                 }
                 if (current == null) current = new LinkedHashMap<>();
                 key = next;
-                value = new StringBuilder();
+                value = new StringBuilder(m.group(1) != null ? "" : m.group(3));
             } else if (key != null) {
                 if (value.length() > 0) value.append('\n');
                 value.append(line);
@@ -280,6 +325,17 @@ public final class WriterWorkflow {
         if (key != null && current != null) current.put(key, value.toString().trim());
         if (current != null && !current.isEmpty()) out.add(current);
         return out;
+    }
+
+    /** A one-field answer: the labeled value, or the whole answer when the model dropped the label. */
+    public static String answer(String raw, String key) {
+        String v = field(raw, key);
+        return v.isEmpty() && raw != null ? raw.strip().replaceFirst("(?i)^" + key + ":\\s*", "") : v;
+    }
+
+    /** True when a critic block only agrees ("The tone is correct."); small models list every part. */
+    public static boolean agrees(String argument) {
+        return argument.matches("(?is).*\\b(is|are|seems|looks) (correct|fine|ok|appropriate|accurate)\\b.*|.*which is correct.*");
     }
 
     private static String field(String raw, String key) {
@@ -321,5 +377,16 @@ public final class WriterWorkflow {
         public Draft getDraft() { return draft; }
         public List<Dispute> getDisputes() { return disputes; }
         public String getBlocked() { return blocked; }
+    }
+
+    /** Self-check: critic blocks parse with values on the key line or below it. */
+    public static void main(String[] args) {
+        List<Map<String, String>> b = blocks("part: TONE\nexpected: formal\nargument: too casual\n\npart:\nFACT\nargument:\nmissing date\ninstead: add 20 Nov");
+        assert b.size() == 2 : b;
+        assert b.get(0).get("part").equals("TONE") && b.get(0).get("argument").equals("too casual") : b;
+        assert answer("Keep dates.", "lesson").equals("Keep dates.") && answer("lesson:\nKeep dates.", "lesson").equals("Keep dates.");
+        assert agrees("The tone is correct.") && !agrees("The date is missing.");
+        assert b.get(1).get("part").equals("FACT") && b.get(1).get("instead").equals("add 20 Nov") : b;
+        System.out.println("WriterWorkflow ok");
     }
 }

@@ -137,6 +137,7 @@ public final class TraceFile {
             }
             output.put("question", question.toString());
         }
+        if (!turn.refused.isEmpty()) output.put("refusal", String.join("\n", turn.refused));
         String message = message(turn);
         if (!message.isBlank()) output.put("message", message);
         return output;
@@ -165,9 +166,11 @@ public final class TraceFile {
 
     private static String message(Turn.Outcome turn) {
         StringBuilder message = new StringBuilder();
-        for (String line : turn.progress) append(message, line);
+        for (String line : turn.progress) if (!line.matches("0/0")) append(message, line);
         for (Information fact : facts(turn)) {
-            if (fact.getKind() == InformationKind.SUSPICIOUS_INSTRUCTION) append(message, fact.getBody());
+            if (fact.getKind() == InformationKind.SUSPICIOUS_INSTRUCTION) {
+                append(message, "Warning: this mail gives orders to the assistant. I did not follow them: " + fact.getBody());
+            }
         }
         return message.toString().strip();
     }

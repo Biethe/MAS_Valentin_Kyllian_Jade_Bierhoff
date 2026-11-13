@@ -50,6 +50,10 @@ public class MailboxServer {
             if (!words("in:inbox").isEmpty() || !words("in:inbox Dubois").equals(List.of("dubois"))) {
                 throw new IllegalStateException(words("in:inbox Dubois").toString());
             }
+            // a keyword query must find the mail that contains it (this was broken: every query returned nothing)
+            MailboxServer box = new MailboxServer(Path.of("scenarios/reply-prof-01.json"), Path.of("/dev/null"));
+            if (box.searchMail(JSON.readTree("{\"query\":\"Dubois\"}")).isEmpty()) throw new IllegalStateException("search finds nothing");
+            if (box.searchMail(JSON.readTree("{\"query\":\"Dubois zzzz\"}")).size() != 0) throw new IllegalStateException("every word must match");
             System.out.println("MailboxServer ok");
             return;
         }
@@ -59,7 +63,8 @@ public class MailboxServer {
                 .serverInfo("university-mailbox", "0.1.0")
                 .capabilities(ServerCapabilities.builder().tools(true).build())
                 .tools(
-                        box.tool("search_mail", "Keyword search over subject, body and sender. Every word must match.",
+                        box.tool("search_mail", "Keyword search over subject, body and sender. Every word must match."
+                                        + " At most " + PAGE + " hits, newest first; narrow the query to reach older mail.",
                                 schema(Map.of("query", "string"), List.of("query")), box::searchMail),
                         box.tool("read_mail", "Read one mail by id, with attachment text.",
                                 schema(Map.of("id", "string"), List.of("id")), box::readMail),
@@ -116,15 +121,22 @@ public class MailboxServer {
         return words;
     }
 
+    /** A real mailbox pages its results: one search never lists a whole inbox. */
+    static final int PAGE = 10;
+
     JsonNode searchMail(JsonNode args) {
         String query = args.path("query").asString("").strip();
         if (query.startsWith("before:")) return before(query.substring("before:".length()));
         List<String> words = words(query);
         ArrayNode hits = JSON.createArrayNode();
-        for (JsonNode m : mails) {
+        List<JsonNode> newest = new ArrayList<>();
+        mails.forEach(newest::add);
+        newest.sort((a, b) -> b.path("date").asString("").compareTo(a.path("date").asString("")));
+        for (JsonNode m : newest) {
+            if (hits.size() >= PAGE) break;
             String hay = (m.path("subject").asString("") + " " + m.path("body").asString("") + " "
                     + m.path("from").asString("")).toLowerCase(Locale.ROOT);
-            boolean all = words.isEmpty();
+            boolean all = true; // no words (in:inbox) lists the newest page
             for (String w : words) all &= hay.contains(w);
             if (!all) continue;
             String body = m.path("body").asString("");

@@ -26,7 +26,10 @@ import tools.jackson.databind.node.ObjectNode;
 public class Bench {
 
     static final JsonMapper JSON = JsonMapper.builder().build();
-    static final Path SCENARIOS = Path.of("scenarios");
+    /** The scenario set: scenarios/ (development) or another folder such as scenarios-heldout/, via BENCH_SET. */
+    static final Path SCENARIOS = Path.of(System.getenv().getOrDefault("BENCH_SET", "scenarios"));
+    /** People and tone profiles, shared by every set. */
+    static final Path SHARED = Path.of("scenarios");
     static final Path REFS = SCENARIOS.resolve("refs");
     static final Path RUNS = Path.of("runs");
     static final String CP = System.getProperty("java.class.path");
@@ -70,7 +73,7 @@ public class Bench {
                 || up[2] != .75 || learning(new double[] {1, 0, 1})[2] != .25 || learning(new double[] {.7, .7})[2] != .7)
             throw new AssertionError("learning score broken: " + Arrays.toString(g));
         Judge judge = new Judge(Files.createDirectories(RUNS).resolve("judge-cache.json"),
-                JSON.readTree(SCENARIOS.resolve("tone-profiles.json").toFile()));
+                JSON.readTree(SHARED.resolve("tone-profiles.json").toFile()));
         String down = judge.preflight();
         if (down != null) {
             System.err.println("preflight: " + down);
@@ -78,7 +81,7 @@ public class Bench {
         }
         Path run = RUNS.resolve(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss")));
         Path traces = Files.createDirectories(run.resolve("traces"));
-        String university = Files.readString(SCENARIOS.resolve("university.json"));
+        String university = Files.readString(SHARED.resolve("university.json"));
         ObjectNode results = JSON.createObjectNode().put("runId", run.getFileName().toString())
                 .put("system", "replayer (reference traces)");
         ArrayNode scored = results.putArray("scenarios");
@@ -129,7 +132,7 @@ public class Bench {
         }
         if (!lint()) return 1;
         Judge judge = new Judge(Files.createDirectories(RUNS).resolve("judge-cache.json"),
-                JSON.readTree(SCENARIOS.resolve("tone-profiles.json").toFile()));
+                JSON.readTree(SHARED.resolve("tone-profiles.json").toFile()));
         String down = judge.preflight();
         if (down != null) {
             System.err.println("preflight: " + down);
@@ -138,7 +141,7 @@ public class Bench {
         Path previous = latestSystemRun(null);
         Path run = RUNS.resolve(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss")));
         Path traces = Files.createDirectories(run.resolve("traces"));
-        String university = Files.readString(SCENARIOS.resolve("university.json"));
+        String university = Files.readString(SHARED.resolve("university.json"));
         ObjectNode results = JSON.createObjectNode().put("runId", run.getFileName().toString()).put("system", system);
         List<Path> scenarios = list(SCENARIOS, ".json").stream()
                 .filter(p -> !Set.of("university.json", "tone-profiles.json").contains(p.getFileName().toString())).toList();
@@ -146,9 +149,9 @@ public class Bench {
         for (Path p : list(SCENARIOS, ".json")) all.append(Files.readString(p));
         String dirty = sh("git", "status", "--porcelain");
         results.putObject("setup").put("commit", sh("git", "rev-parse", "--short", "HEAD"))
-                .put("dirty", !dirty.isEmpty()).put("system", system)
+                .put("dirty", !dirty.isEmpty()).put("system", system).put("set", SCENARIOS.toString())
                 .put("judgeModel", Judge.MODEL).put("judgeDigest", judge.ollama.digest(Judge.MODEL)).put("seed", 42)
-                .put("judgePromptVersion", Judge.PROMPT_VERSION).put("scenarioSetHash", Judge.sha256(all.toString())).put("repeat", repeat);
+                .put("judgePromptVersion", Judge.PROMPT_VERSION).put("scenarioSetHash", Judge.sha256(all.toString())).put("repeat", repeat).put("latencyScored", LATENCY);
         ArrayNode scored = results.putArray("scenarios");
         for (int k = 1; k <= repeat; k++)
             for (Path s : scenarios) {
@@ -199,9 +202,12 @@ public class Bench {
 
     /** Setup fields that must match for two runs to be scored with the same ruler. The system may differ. */
     static List<String> setupDiffers(JsonNode a, JsonNode b) {
-        return List.of("judgeModel", "judgeDigest", "judgePromptVersion", "scenarioSetHash", "repeat").stream()
+        return List.of("judgeModel", "judgeDigest", "judgePromptVersion", "scenarioSetHash", "repeat", "latencyScored").stream()
                 .filter(k -> !a.path("setup").path(k).equals(b.path("setup").path(k))).toList();
     }
+
+    /** BENCH_LATENCY=0 drops latency from the composite (memory runs are slower by design); p95 is still reported. */
+    static final boolean LATENCY = !"0".equals(System.getenv("BENCH_LATENCY"));
 
     static final List<String> DIMS = List.of("task", "factuality", "tone", "relevance", "concise", "injection",
             "reliability", "learning", "latency");
@@ -274,6 +280,7 @@ public class Bench {
         double sum = 0;
         int n = 0;
         for (String dim : DIMS) {
+            if (dim.equals("latency") && !LATENCY) continue;
             if (dim.equals("learning")) {
                 if (!card.has(dim)) continue;
                 sum += card.path(dim).asDouble();
@@ -447,7 +454,9 @@ public class Bench {
                 .filter(p -> before == null || p.compareTo(before) < 0)
                 .filter(p -> {
                     try {
-                        return JSON.readTree(p.resolve("results.json").toFile()).has("setup");
+                        // only runs of the same scenario set compare; runs from before sets existed are dev runs
+                        JsonNode setup = JSON.readTree(p.resolve("results.json").toFile()).path("setup");
+                        return !setup.isMissingNode() && setup.path("set").asString("scenarios").equals(SCENARIOS.toString());
                     } catch (Exception e) {
                         return false;
                     }

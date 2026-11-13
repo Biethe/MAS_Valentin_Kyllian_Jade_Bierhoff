@@ -17,9 +17,10 @@ import tools.jackson.databind.json.JsonMapper;
 public class Scenario {
 
     static final JsonMapper JSON = JsonMapper.builder().build();
-    static final Set<String> KINDS = Set.of("reply", "compose", "summarize", "injection", "no-match");
+    static final Set<String> KINDS = Set.of("reply", "compose", "summarize", "injection", "no-match",
+            "thread", "multi-hop", "multi-task", "out-of-scope");
     static final Set<String> WRITING_KINDS = Set.of("reply", "compose");
-    static final Set<String> ROUTES = Set.of("REPLY", "COMPOSE", "SUMMARIZE");
+    static final Set<String> ROUTES = Set.of("REPLY", "COMPOSE", "SUMMARIZE", "OUTOFSCOPE");
     static final Set<String> ROLES = Set.of("professor", "researcher", "student", "administration", "friend");
     static final Set<String> USES = Set.of("copied", "adapted", "inspired");
     static final Set<String> NOT_SCENARIOS = Set.of("university.json", "tone-profiles.json");
@@ -46,7 +47,7 @@ public class Scenario {
 
     static List<String> lint(Path dir, List<Path> refs) throws IOException {
         List<String> problems = new ArrayList<>();
-        JsonNode uni = JSON.readTree(dir.resolve("university.json").toFile());
+        JsonNode uni = JSON.readTree(Bench.SHARED.resolve("university.json").toFile());
         Set<String> ids = new HashSet<>(), emails = new HashSet<>();
         uni.path("people").forEach(p -> {
             ids.add(p.path("id").asString());
@@ -89,6 +90,9 @@ public class Scenario {
                     && !s.path("kind").asString().equals("no-match"))
                 p.add("summary scenario needs expect.tools.mustRead (the source mails)");
             if (lang.isEmpty()) p.add("output.language missing");
+            if (s.path("kind").asString().equals("out-of-scope")
+                    && (!e.path("route").toString().equals("[\"OUTOFSCOPE\"]") || !e.path("tools").path("draft").isNull()))
+                p.add("out-of-scope scenario needs route [OUTOFSCOPE] and tools.draft null");
             String role = e.path("output").path("recipientRole").asString("");
             if (!role.isEmpty() && !ROLES.contains(role)) p.add("unknown role " + role);
             // fictional people only: every address is a known person or on the reserved .example domain
@@ -99,7 +103,7 @@ public class Scenario {
             }
             p.forEach(x -> problems.add(file + ": " + x));
         }
-        // coverage: every kind has >= 2 scenarios per language; writing scenarios cover every role
+        // coverage: every kind in the set has a scenario in each language; writing scenarios cover every role
         Map<String, Integer> perKindLang = new HashMap<>();
         Set<String> rolesSeen = new HashSet<>();
         for (JsonNode s : all.values()) {
@@ -107,10 +111,12 @@ public class Scenario {
             if (WRITING_KINDS.contains(s.path("kind").asString()))
                 rolesSeen.add(s.path("expect").path("output").path("recipientRole").asString());
         }
-        for (String kind : KINDS.stream().sorted().toList())
+        Set<String> present = new HashSet<>();
+        all.values().forEach(s -> present.add(s.path("kind").asString()));
+        for (String kind : present.stream().sorted().toList())
             for (String lang : List.of("fr", "en"))
-                if (perKindLang.getOrDefault(kind + "/" + lang, 0) < 2)
-                    problems.add("coverage: fewer than 2 " + kind + " scenarios in " + lang);
+                if (perKindLang.getOrDefault(kind + "/" + lang, 0) < 1)
+                    problems.add("coverage: no " + kind + " scenario in " + lang);
         if (all.values().stream().anyMatch(s -> WRITING_KINDS.contains(s.path("kind").asString())))
             for (String role : ROLES)
                 if (!rolesSeen.contains(role)) problems.add("coverage: no writing scenario for role " + role);

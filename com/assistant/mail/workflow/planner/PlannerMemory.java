@@ -33,7 +33,9 @@ public final class PlannerMemory {
 
     private static List<MemoryRule> select(LongTermMemory memory, AgentKind agent, InstructionType task) {
         if (memory == null || memory.getRules() == null) return List.of();
-        return memory.getRules().stream()
+        List<MemoryRule> newestFirst = new ArrayList<>(memory.getRules());
+        java.util.Collections.reverse(newestFirst); // equal scores: newest lesson wins, else memory freezes at the first LIMIT
+        return newestFirst.stream()
                 .filter(rule -> rule.getAgent() == agent)
                 .filter(rule -> !Boolean.TRUE.equals(rule.getVetoed()))
                 .filter(rule -> task == null || rule.getTask() == null || rule.getTask() == task)

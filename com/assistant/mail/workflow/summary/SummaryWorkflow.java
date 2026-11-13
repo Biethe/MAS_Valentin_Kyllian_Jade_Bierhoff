@@ -42,6 +42,13 @@ public final class SummaryWorkflow {
     public Result run(Brief brief, Checklist checklist) {
         Progress.note("Writing the summary");
         String body = call(SummarizerSystemPrompt.TEXT, writePrompt(brief, checklist)).trim();
+        int limit = maxWords(brief);
+        if (System.getenv("MAIL_DEBUG") != null) System.err.println("--- summary limit " + limit + " words " + words(body) + " emails " + brief.getEmails().size());
+        if (limit > 0 && words(body) > limit) { // one shortening pass; small models overshoot the budget
+            body = call(SummarizerSystemPrompt.TEXT, writePrompt(brief, checklist) + "\ndraft summary (" + words(body)
+                    + " words, too long):\n" + body + "\n\nRewrite it in at most " + limit
+                    + " words. Keep every date, time, place and action; drop everything else.").trim();
+        }
         mark(checklist, body);
         List<Dispute> disputes = new ArrayList<>();
         StringBuilder corrections = new StringBuilder();
@@ -59,21 +66,23 @@ public final class SummaryWorkflow {
     }
 
     private void debate(Brief brief, Checklist checklist, String body, List<Dispute> disputes, StringBuilder corrections) {
-        for (Map<String, String> gap : blocks(call(SummarizerSystemPrompt.CRITIC, criticPrompt(brief, body, checklist)))) {
+        if (System.getenv("MAIL_CRITIC") == null) return; // off by default: ~4 extra model calls per draft
+        for (Map<String, String> gap : com.assistant.mail.workflow.writer.WriterWorkflow.blocks(call(SummarizerSystemPrompt.CRITIC, criticPrompt(brief, body, checklist)))) {
+            if (disputes.size() == 2) break; // ponytail: same cap as the writer
             BriefPart part = enumOrNull(BriefPart.class, gap.get("part"));
             String argument = text(gap.get("argument")).strip();
             String expected = text(gap.get("expected")).strip();
-            if (part == null || argument.isEmpty()) continue;
+            if (part == null || argument.isEmpty() || com.assistant.mail.workflow.writer.WriterWorkflow.agrees(argument)) continue;
             Dispute dispute = new Dispute();
             dispute.setAgent(AgentKind.SUMMARIZER);
             dispute.setTask(brief.getTask());
             dispute.setPart(part);
             dispute.setCriticArgument(argument);
             dispute.setCorrection(text(gap.get("instead")).strip());
-            dispute.setAgentArgument(field(call(SummarizerSystemPrompt.ARGUMENT, argumentPrompt(brief, body, part, expected, argument)), "argument"));
-            boolean criticWins = "critic".equalsIgnoreCase(field(call(SummarizerSystemPrompt.JUDGE, judgePrompt(brief, body, part, expected, dispute)), "winner"));
+            dispute.setAgentArgument(com.assistant.mail.workflow.writer.WriterWorkflow.answer(call(SummarizerSystemPrompt.ARGUMENT, argumentPrompt(brief, body, part, expected, argument)), "argument"));
+            boolean criticWins = com.assistant.mail.workflow.writer.WriterWorkflow.answer(call(SummarizerSystemPrompt.JUDGE, judgePrompt(brief, body, part, expected, dispute)), "winner").toLowerCase().startsWith("critic");
             dispute.setCriticRight(criticWins);
-            dispute.setLesson(field(call(SummarizerSystemPrompt.LESSON, lessonPrompt(brief, part, expected, dispute)), "lesson"));
+            dispute.setLesson(com.assistant.mail.workflow.writer.WriterWorkflow.answer(call(SummarizerSystemPrompt.LESSON, lessonPrompt(brief, part, expected, dispute)), "lesson"));
             boolean vetoed = veto != null && veto.veto(dispute.getLesson());
             PlannerMemory.remember(memory, dispute, vetoed);
             disputes.add(dispute);
@@ -87,8 +96,9 @@ public final class SummaryWorkflow {
 
     private void mark(Checklist checklist, String body) {
         List<ChecklistItem> items = checklist.getItems();
+        if (items == null || items.isEmpty()) return;
         boolean[] used = new boolean[items.size()];
-        for (Map<String, String> block : blocks(call(SummarizerSystemPrompt.MARK, markPrompt(body, checklist)))) {
+        for (Map<String, String> block : com.assistant.mail.workflow.writer.WriterWorkflow.blocks(call(SummarizerSystemPrompt.MARK, markPrompt(body, checklist)))) {
             BriefPart part = enumOrNull(BriefPart.class, block.get("part"));
             String expected = block.getOrDefault("expected", "").strip();
             if (part == null) continue;
@@ -142,6 +152,17 @@ public final class SummaryWorkflow {
         return "summary:\n" + body + "\n\nchecklist:\n" + lines(checklist);
     }
 
+    /** Two fifths of the source words, at least 15; 0 without source mail. */
+    static int maxWords(Brief brief) {
+        int words = 0;
+        for (Email email : brief.getEmails()) words += words(text(email.getBody()));
+        return words == 0 ? 0 : Math.max(15, words * 2 / 5);
+    }
+
+    static int words(String text) {
+        return (int) java.util.regex.Pattern.compile("\\p{L}+").matcher(text == null ? "" : text).results().count();
+    }
+
     static String briefText(Brief brief) {
         StringBuilder text = new StringBuilder();
         text.append("task: ").append(brief.getTask() == null ? "" : brief.getTask().name()).append('\n');
@@ -149,7 +170,10 @@ public final class SummaryWorkflow {
         text.append("tone: ").append(brief.getTone() == null ? "" : brief.getTone().name()).append('\n');
         text.append("structure: ").append(brief.getStructure() == null ? "" : brief.getStructure().name()).append('\n');
         for (String note : brief.getStyleNotes()) text.append("styleNote: ").append(note).append('\n');
-        for (Information fact : brief.getFacts()) text.append("fact: ").append(text(fact.getBody())).append('\n');
+        if (brief.getEmails().isEmpty()) {
+            for (Information fact : brief.getFacts()) text.append("fact: ").append(text(fact.getBody())).append('\n');
+        }
+        if (maxWords(brief) > 0) text.append("maxWords: ").append(maxWords(brief)).append('\n');
         for (Email email : brief.getEmails()) {
             text.append("mail:\n");
             text.append("subject: ").append(text(email.getSubject())).append('\n');
@@ -236,35 +260,9 @@ public final class SummaryWorkflow {
         return raw == null ? "" : raw;
     }
 
-    static List<Map<String, String>> blocks(String raw) {
-        List<Map<String, String>> out = new ArrayList<>();
-        Map<String, String> current = null;
-        String key = null;
-        StringBuilder value = new StringBuilder();
-        if (raw == null) return out;
-        for (String line : raw.split("\n", -1)) {
-            if (line.matches("[A-Za-z][A-Za-z0-9]*:")) {
-                if (key != null) current.put(key, value.toString().trim());
-                String next = line.substring(0, line.length() - 1);
-                if (current != null && current.containsKey(next)) {
-                    out.add(current);
-                    current = null;
-                }
-                if (current == null) current = new LinkedHashMap<>();
-                key = next;
-                value = new StringBuilder();
-            } else if (key != null) {
-                if (value.length() > 0) value.append('\n');
-                value.append(line);
-            }
-        }
-        if (key != null && current != null) current.put(key, value.toString().trim());
-        if (current != null && !current.isEmpty()) out.add(current);
-        return out;
-    }
 
     private static String field(String raw, String key) {
-        for (Map<String, String> block : blocks(raw)) {
+        for (Map<String, String> block : com.assistant.mail.workflow.writer.WriterWorkflow.blocks(raw)) {
             String value = block.get(key);
             if (value != null && !value.isBlank()) return value.strip();
         }

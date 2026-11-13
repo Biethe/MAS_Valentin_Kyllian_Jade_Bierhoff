@@ -9,14 +9,14 @@ A local assistant that reads a mailbox, summarizes mail, and saves drafts. It ne
 - Ollama, with these models
 
 ```bash
-ollama pull qwen3.5:4b
-ollama pull qwen3.5:9b-q4_K_M
 ollama pull llama3.1:8b
-ollama pull tev1
+ollama pull tev1:0.8b
 ollama pull all-minilm:22m
 ```
 
-The writer and the summarizer use `AGENT_MODEL` (default `qwen3.5:4b`). The planner uses `PLANNER_MODEL` (default `qwen3.5:9b-q4_K_M`). The critic uses `CRITIC_MODEL` (default `llama3.1:8b`, a similar size from Meta rather than Qwen). The judge that picks between an agent and the critic uses `JUDGE_MODEL` (default `tev1`). `OLLAMA_HOST` overrides the Ollama URL (default `http://localhost:11434`).
+Every agent role uses `llama3.1:8b` by default: the writer and the summarizer (`AGENT_MODEL`), the planner (`PLANNER_MODEL`) and the critic (`CRITIC_MODEL`). One model stays loaded on the GPU, so no turn waits for Ollama to swap models; on an 8 GB GPU that is what keeps a turn under about 10 seconds. It is also the benchmark judge's model, so both share the loaded copy during `./bench run`. The judge that picks between an agent and the critic uses `JUDGE_MODEL` (default `tev1:0.8b`). `OLLAMA_HOST` overrides the Ollama URL (default `http://localhost:11434`).
+
+The critic debate, which writes the long-term lessons, is off by default because it adds about 3 model calls per disputed part (at most 2 per draft). `MAIL_CRITIC=1` turns it on. `MEMORY_FILE=<path>` keeps the lessons between runs; without it they are thrown away after the turn. `MAIL_DEBUG=1` prints every model answer.
 
 ## Chat page
 
@@ -129,6 +129,25 @@ Same mailbox variables as `./ui/agent`. Prints the answer and does not start the
 java -cp "ui/agent-classes:benchmark/target/classes:benchmark/target/lib/*" \
   com.assistant.mail.workflow.turn.MailMain "summarize my last mail"
 ```
+
+## Agentic organization (second system)
+
+`com.assistant.mail.agentic` is a second, autonomous system built on the same mailbox and model:
+- A router delegates the request to one specialist. Each specialist is defined in `specialists/<name>.md`: first line `description: …`, then its system prompt, then an optional `## context` section. Add a file to add an agent.
+- The specialist chooses its own tool calls (search, read, thread, contact lookup).
+- An opponent agent attacks every proposal. The specialist concedes or defends, for at most 2 attacks, then the coordinator commits.
+- The coordinator voids proposals made before any search, or empty ones (norms).
+- Lessons from conceded arguments go to `MEMORY_FILE`.
+
+Run it on one benchmark scenario from `benchmark/` (the same environment `./bench run` provides):
+
+```bash
+SCENARIO=scenarios/reply-prof-01.json TRACE_OUT=/tmp/t.jsonl \
+MAILBOX_CMD="java -cp target/classes:target/lib/* com.assistant.mail.mailbox.MailboxServer scenarios/reply-prof-01.json /tmp/tools.jsonl" \
+java -cp '<agent classes>:target/classes:target/lib/*' com.assistant.mail.agentic.AgenticMain
+```
+
+Options: `OPPONENT=0` removes the opponent, `MEMORY_FILE=<path>` keeps lessons, and `MAIL_DEBUG=1` prints every agent message. Next to the trace, `<trace>.agentic.json` holds the route, the negotiation counts and the message log. `report/extract.py` turns benchmark runs into the report's plot data.
 
 ## Benchmark
 
